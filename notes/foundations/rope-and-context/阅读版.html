@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>旋转位置编码与上下文长度扩展 · 阅读版</title><style>
+:root{--ink:#263440;--muted:#72808b;--accent:#24649a;--paper:#fff;--bg:#f5f4ef}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:36px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif}
+nav{position:fixed;top:0;left:0;width:260px;height:100vh;padding:48px 28px;overflow:auto;border-right:1px solid #e1e4e5}
+nav .brand{font-size:12px;letter-spacing:.15em;color:var(--muted);margin-bottom:32px}
+nav a{display:block;font-size:14px;line-height:1.8;padding:10px 0;color:#4c6170;text-decoration:none}
+nav a:hover{color:var(--accent)}nav hr{border:0;border-top:1px solid #dfe4e7;margin:28px 0}
+nav p{font-size:12px;line-height:1.9;color:var(--muted)}
+main{margin:0 0 0 260px;padding:64px 56px 120px}article{max-width:810px;margin:auto}
+header{padding:24px 0 64px}.eyebrow{font-size:13px;color:var(--accent);letter-spacing:.12em}
+header h1{font-size:36px;line-height:1.55;margin:20px 0 24px;letter-spacing:.01em}
+header p{color:#617381;font-size:19px;line-height:1.9;max-width:660px}
+.chapter{background:var(--paper);padding:52px 52px 60px;margin:0 0 72px;border:1px solid #e6e9eb;border-radius:8px}
+.chapter h1{font-size:28px;line-height:1.65;margin:0 0 32px;font-weight:650}
+.chapter h2{font-size:23px;line-height:1.65;margin:64px 0 24px;padding-top:12px;border-top:1px solid #e7ecef;font-weight:650}
+.chapter h3{font-size:20px;line-height:1.7;margin:36px 0 16px;font-weight:650}
+p,li{font-size:19px;line-height:1.95;overflow-wrap:break-word}
+p{margin:0 0 26px}ul,ol{padding-left:1.5em;margin:24px 0 32px}li{margin:0 0 14px}
+strong{font-weight:650;color:#233e50}a{color:var(--accent);text-underline-offset:4px}
+code{font-family:'Microsoft YaHei',sans-serif;font-size:.91em;background:#f0f4f7;border-radius:4px;padding:2px 5px}
+pre{overflow-x:auto;background:#f7f9fa;padding:24px 18px;margin:28px 0;border-radius:6px;line-height:1.9}pre code{font-family:Consolas,'Courier New',monospace;background:transparent;padding:0;font-size:15px}
+.equation{margin:32px 0 36px;padding:28px 20px;text-align:center;background:#f7f9fa;border-radius:6px;overflow-x:auto}
+.equation img{max-width:100%;height:auto;vertical-align:middle}
+p:has(>img){margin:38px -24px 28px;padding:12px 0;background:white}
+p>img{display:block;width:100%;height:auto}
+table{border-collapse:collapse;width:100%;margin:32px 0;font-size:15px;line-height:1.8}
+th,td{text-align:left;padding:14px 12px;border-bottom:1px solid #e1e7eb;vertical-align:top}
+th{background:#f1f5f7;font-weight:650}blockquote{border-left:3px solid #b6cbd8;margin:28px 0;padding-left:20px}
+footer{font-size:13px;line-height:1.9;color:var(--muted)}
+@media(min-width:1450px){main{padding-right:130px}}
+@media(max-width:1050px){nav{width:210px;padding:32px 20px}main{margin-left:210px;padding:40px 24px}.chapter{padding:38px 32px}p,li{font-size:18px}}
+@media(max-width:760px){nav{position:static;width:auto;height:auto;padding:24px;border:0;border-bottom:1px solid #ddd}nav .brand{margin-bottom:12px}nav a{display:inline-block;margin-right:14px;font-size:13px}nav hr,nav p{display:none}main{margin:0;padding:28px 16px 60px}header{padding:10px 8px 32px}header h1{font-size:28px}.chapter{padding:30px 22px;margin-bottom:36px}.chapter h1{font-size:24px}.chapter h2{font-size:21px;margin-top:48px}p,li{font-size:17px;line-height:1.9}p:has(>img){margin-left:-12px;margin-right:-12px}table{font-size:13px}th,td{padding:10px 6px}.equation{padding:22px 10px}}
+@media print{nav{display:none}main{margin:0;padding:0}body{background:white}.chapter{border:0;padding:24px 0;break-before:page}h1,h2,h3{break-after:avoid}.equation,p:has(>img){break-inside:avoid}header{padding-bottom:30px}}
+</style></head>
+<body><nav aria-label="章节目录"><div class="brand">大模型 · 基础原理</div><a href="#chapter-01">01 · RoPE 基础</a><a href="#chapter-02">02 · 长度扩展方法</a><a href="#chapter-03">03 · 扩展训练实践</a><a href="#chapter-04">04 · 数学补充</a><a href="#references">参考资料</a>
+<hr><a href="README.md">专题源文件</a><a href="../../../README.md">资料总入口</a>
+<p>先读前三章。数学补充可以按需查阅。<br>图与公式均可离线显示。</p></nav>
+<main><article><header><div class="eyebrow">从原理到实践</div><h1>旋转位置编码<br>与上下文长度扩展</h1>
+<p>先弄清楚位置如何进入注意力，再看频率如何调整，最后讨论训练和评测。</p>
+<p>示例使用 128 维 RoPE，从 4K 扩展到 32K。token 是分词单元，不等于汉字或单词。</p></header>
+<section class="chapter" id="chapter-01"><h1 id="chapter-01-01-rope-token">01 · RoPE：让注意力知道两个 token 相隔多远</h1>
+<p>先考虑一个简单问题：模型如何区分“狗追人”和“人追狗”？</p>
+<p>词的内容相同，顺序却改变了意思。所以模型不仅需要知道“是什么”，还需要知道“在哪里”。RoPE 是把位置信息放进注意力计算的一种方法。</p>
+<h2 id="chapter-01-1">1. 先把注意力里的三个角色讲清楚</h2>
+<h3 id="chapter-01-token">Token 与位置</h3>
+<p>模型先把文本切成 <strong>token</strong>，也就是分词器处理的基本单元。一个汉字可能是一个 token，也可能与其他字符合成一个 token；英文单词也可能被拆成几个 token。</p>
+<p>每个 token 被转换成一串数字，即向量。位置编号 <code>m</code> 表示它在当前序列中的位置，从 0 开始。</p>
+<h3 id="chapter-01-qkv">Q、K、V 各自做什么</h3>
+<p>在每一层注意力中，模型把输入向量通过三个可学习的线性变换，得到三个新向量：</p>
+<ul>
+<li><strong>Q（query，查询）</strong>：当前 token 用什么条件寻找相关信息。</li>
+<li><strong>K（key，键）</strong>：其他 token 用什么特征与查询匹配。</li>
+<li><strong>V（value，值）</strong>：匹配之后，实际参与汇总的信息。</li>
+</ul>
+<p>可以把它们理解成“搜索条件、索引、内容”。这是帮助理解的比喻，不代表向量的每一维都对应某个可读的语义。</p>
+<p>当前位置 <code>m</code> 与候选位置 <code>n</code> 的匹配分数是：</p>
+<div class="equation"><img src="assets/equations/c9a017219f9b.svg" alt="a_{mn}=\frac{q_m^T k_n}{\sqrt{d_h}}"></div>
+
+<p>这里，<code>qₘ</code>、<code>kₙ</code> 是对应的 Q、K 向量；上标 <code>T</code> 表示转置，乘起来得到点积。<code>dₕ</code> 是一个注意力头的维度，除以它的平方根用来控制分数尺度。</p>
+<p>随后用 <strong>Softmax</strong> 把分数变成和为 1 的权重，再按权重汇总 V。分数越大，通常得到的权重越大。</p>
+<p>对于因果语言模型，还要在 Softmax 前遮住未来位置。这样预测下一个 token 时，模型只能使用已经出现的内容。</p>
+<h3 id="chapter-01-_1">“多头”是什么意思</h3>
+<p>多头注意力让多个注意力头并行计算，各自使用自己的 Q/K/V 表示。RoPE 通常在每个头内部应用，而不是把整个模型的隐藏维度当成一个旋转空间。</p>
+<p>后文的 <code>d</code> 专指参与 RoPE 的维度。示例让 <code>d = dₕ = 128</code>；一些模型只旋转头内的部分维度，或者 Q 与 K 的头数不同。</p>
+<h2 id="chapter-01-2">2. 为什么需要位置编码</h2>
+<p>只看 Q 和 K 的内容匹配，注意力没有完整的词序信息。位置编码负责补上这部分信息。因果遮罩会限制可见范围，但它不能替代具体的位置表示。</p>
+<p>早期 Transformer 把位置向量加到 token 的输入向量上。位置向量可以是可学习的，也可以由正弦、余弦计算。</p>
+<p>两者不能混为一谈：<strong>学习式位置表可能受表长限制；正弦位置编码可以计算更大的位置。</strong> 能算出来，不等于在更长文本上一定工作得好。</p>
+<p>RoPE 换了一个注入位置的地方：它不直接改输入 embedding，而是在注意力打分前，按位置旋转 Q 和 K。</p>
+<h2 id="chapter-01-3">3. 先看一个二维例子</h2>
+<p>把一个二维向量画成平面上的箭头。RoPE 按位置编号转动它：</p>
+<div class="equation"><img src="assets/equations/fed11bc09b20.svg" alt="\phi_m=m\omega"></div>
+
+<p><code>ω</code> 是每前进一个 token 增加的角度，单位是“弧度/token”。弧度是角度的另一种单位：一整圈为 <code>2π</code> 弧度，1 弧度约为 57.3°。</p>
+<p><code>φₘ</code> 是位置 <code>m</code> 对应的旋转角。旋转改变方向，不改变向量长度。</p>
+<p>假设这一对维度的角速度为每 token 10°，Q 原来指向 30°，K 原来指向 10°。这个角速度只是教学用数字。</p>
+<p>Q 在位置 7：旋转 70°，新方向是 100°。</p>
+<p>K 在位置 12：旋转 120°，新方向是 130°。</p>
+<p>两个新方向的差为 −30°，也就是：</p>
+<div class="equation"><img src="assets/equations/32cf301e6468.svg" alt="(30^\circ-10^\circ)+(7-12)\times10^\circ=-30^\circ"></div>
+
+<p><strong>位置的贡献只剩下 <code>7 − 12</code>。</strong> 如果两个 token 同时向后平移 10 个位置，位置差仍为 −5，这部分计算不变。</p>
+<p><img alt="旋转后的向量与共同平移后的向量" src="assets/01-relative-rotation.png" /></p>
+<p><strong>看图时关注夹角。</strong> 左边使用位置 7 和 12，右边改成 17 和 22。两支箭头的绝对方向变了，但相对夹角不变，因此在这组固定 Q/K 下，点积不变。</p>
+<p>这里有一个重要限定：我们固定了旋转前的 Q 和 K。真实模型的 Q/K 本身取决于上下文，不能因此说“任意两段文本只要距离一样，注意力分数就一样”。</p>
+<h2 id="chapter-01-4-rope">4. 二维旋转如何变成 RoPE</h2>
+<p>对一对坐标 <code>(x, y)</code>，旋转角 <code>φ</code> 后的新坐标是：</p>
+<div class="equation"><img src="assets/equations/8de5b90fc0b7.svg" alt="x&#x27;=x\cos\phi-y\sin\phi"></div>
+
+<div class="equation"><img src="assets/equations/0e066a493c2d.svg" alt="y&#x27;=x\sin\phi+y\cos\phi"></div>
+
+<p>RoPE 对 Q 和 K 的坐标对分别做这个操作。一个 128 维的旋转向量可以分成 64 对，每对都在自己的二维平面中旋转。</p>
+<p>“二维平面”在这里是数学上的分组，不是模型里真的有 64 个物理表盘。</p>
+<p>教学上常用相邻维度配对，如 <code>(0,1)</code>、<code>(2,3)</code>。实际实现也可能把前后两半配对；只要权重布局和旋转约定一致，两种写法都可以。迁移代码时不能只改配对方式。</p>
+<h2 id="chapter-01-5">5. 为什么每对维度要用不同角速度</h2>
+<p>如果所有维度都用同一个角速度，就只得到一种周期变化。RoPE 用一组快慢不同的角速度，提供多个尺度的位置特征。</p>
+<p>常见的频率安排是：</p>
+<div class="equation"><img src="assets/equations/4692ada55ef4.svg" alt="\omega_i=b^{-2i/d},\qquad i=0,1,\ldots,d/2-1"></div>
+
+<p><code>i</code> 是坐标对的编号；<code>d</code> 是旋转维度；<code>b</code> 是底数。经典示例取 <code>b = 10,000</code>。</p>
+<p>第 0 对的 <code>ω₀ = 1</code>，每前进一个 token 转 1 弧度。往后的坐标对转得越来越慢。</p>
+<p>如果想知道转一整圈需要多少 token，可以计算 <strong>波长</strong>：</p>
+<div class="equation"><img src="assets/equations/b6a096575c8a.svg" alt="\lambda_i=\frac{2\pi}{\omega_i}"></div>
+
+<p><img alt="不同坐标对的波长与三种旋转速度" src="assets/02-frequency-scales.png" /></p>
+<p><strong>左图看尺度，右图看变化速度。</strong> 在 <code>d = 128</code>、<code>b = 10,000</code> 下，第 0 对的波长约为 6.28 token；第 32 对约为 628 token；第 63 对约为 54,410 token。</p>
+<p>快的通道让相邻位置有较大的角度差；慢的通道让较大距离仍产生缓慢变化。这是频率设计的直觉，不能理解成“某一对维度只负责语法，另一对只负责长文检索”。模型如何使用这些特征由训练决定。</p>
+<p>多频率也不意味着无限长度下的位置绝对不会混淆。有限维表示和有限计算精度，都需要纳入实际考虑。</p>
+<h2 id="chapter-01-6-rope-v">6. RoPE 在哪里使用，V 为什么通常不旋转</h2>
+<p>标准的处理顺序是：先得到 Q/K/V，按头组织，再对 Q/K 应用 RoPE，接着计算匹配分数、加遮罩、做 Softmax，最后汇总 V。</p>
+<p>只旋转 Q/K 已经能让匹配分数包含相对位置。标准 RoPE 因此保留 V 的原有表示，用它承载被汇总的内容。</p>
+<p>这是一种设计选择，不是“旋转 V 在数学上没有意义”。其他注意力结构可以采用不同设计，但不能与标准 RoPE 混在一起解释。</p>
+<p>RoPE 通常没有额外的可学习参数，不过生成或缓存正弦、余弦，以及执行旋转，都有计算和存储成本。</p>
+<h2 id="chapter-01-7">7. 先记住这三件事</h2>
+<p><strong>RoPE 用位置决定旋转角。</strong> Q 和 K 在打分前被旋转。</p>
+<p><strong>固定旋转前的 Q/K 时，旋转带来的位置项由相对位置决定。</strong> 严格推导见数学补充。</p>
+<p><strong>频率设计提供位置特征，不保证长度泛化。</strong> 长文本还需要合适的数据、训练和评测。</p>
+<p>下一章：<a href="#chapter-02">如何扩展上下文长度</a>。</p></section><section class="chapter" id="chapter-02"><h1 id="chapter-02-02-4k-32k">02 · 从 4K 到 32K：位置该怎么处理</h1>
+<p>上一章解释了 RoPE 如何表示位置。这一章讨论另一件事：模型只在较短序列上训练过，现在希望它处理更长序列。</p>
+<p>下面统一用一个例子：原训练长度为 4,096 token，目标长度为 32,768 token，扩展倍数为 8。</p>
+<h2 id="chapter-02-1">1. 先区分三个容易混淆的长度</h2>
+<p><strong>训练序列长度</strong>是训练中实际使用的长度。不同训练阶段可能采用不同长度，也可能混合使用长短序列。</p>
+<p><strong>允许输入长度</strong>是实现和配置允许接收的长度。把配置中的上限改大，只说明程序可能接受更长输入。</p>
+<p><strong>有效上下文长度</strong>是模型在给定任务上能可靠使用的范围。它需要通过评测确认，而且检索、推理、总结等任务可能得到不同结果。</p>
+<p>所以，“配置支持 128K”和“模型能够可靠推理 128K 内容”不能直接画等号。</p>
+<h2 id="chapter-02-2">2. 外推与内插分别是什么</h2>
+<p><strong>外推</strong>：继续使用原来的位置规则，计算训练范围以外的位置。例如仍然用 <code>mωᵢ</code>，只是 <code>m</code> 从几千增长到几万。</p>
+<p><strong>内插</strong>：把更长的坐标范围压回原来的尺度。例如把位置 <code>m</code> 换成 <code>m/8</code>，使目标长度边界对应原来的训练长度边界。</p>
+<p>这里的“内插”是位置尺度映射，不是在两个 token 之间插入新的 token。</p>
+<p>RoPE 的公式能够计算任意位置，但模型不一定适应这些位置产生的表示。这叫 <strong>分布偏移</strong>：推理时的输入特征、距离或任务条件，与训练时不同。明显超出训练分布的情况常被称为 OOD（out of distribution）。</p>
+<h2 id="chapter-02-3">3. 直接外推为什么可能出问题</h2>
+<p>看一对转得很慢的维度。在 4K 范围内，它可能只转过一小段；扩展到 32K 时，转过的角度明显更大。</p>
+<p><img alt="原长度与目标长度下的旋转圈数" src="assets/03-phase-coverage.png" /></p>
+<p><strong>图里画的是未取模的旋转圈数。</strong> 最慢的一对从约 0.075 圈增至约 0.602 圈。右图说明：它进入了训练长度内未覆盖的角度范围。</p>
+<p>高频通道在训练范围内已经绕过很多圈，但也不能说它“绝对不怕外推”。单个通道的相位重复，不代表多通道组合、相对距离分布和注意力行为都保持不变。</p>
+<p>长文本还增加了干扰信息、候选位置和任务难度。<strong>低频相位变化是理解外推风险的一条线索，不是所有失败的唯一原因。</strong></p>
+<h2 id="chapter-02-4-pi">4. PI：把所有位置统一缩小</h2>
+<p><strong>Position Interpolation（PI，位置内插）</strong>采用最直接的比例变换。</p>
+<p>设扩展倍数为：</p>
+<div class="equation"><img src="assets/equations/e5f8f86ac8c8.svg" alt="\alpha=\frac{L_{\mathrm{target}}}{L_{\mathrm{train}}}"></div>
+
+<p>计算旋转时，把位置改为：</p>
+<div class="equation"><img src="assets/equations/bb265e5251c3.svg" alt="m&#x27;=\frac{m}{\alpha}"></div>
+
+<p>在本例中，<code>m/8</code> 把 32K 的位置尺度映射回 4K。位置编号实际从 0 开始，所以目标末尾是 32,767，不是 32,768；这里用长度边界说明比例关系。</p>
+<p>从另一种写法看，它等价于把所有角速度统一除以 8：</p>
+<div class="equation"><img src="assets/equations/eb3bb0a70d30.svg" alt="\omega&#x27;_i=\frac{\omega_i}{\alpha}"></div>
+
+<h3 id="chapter-02-_1">它改善什么，又改变什么</h3>
+<p>PI 控制了各通道在目标长度下的角度范围，减少直接跨入新范围的问题。</p>
+<p>代价是相邻两个 token 的角度差也缩小了。原来相差 1 个位置，现在在映射坐标中只相差 0.125，模型熟悉的位置特征发生变化。</p>
+<p>这可能影响短程行为，但不能说模型一定“分不清相邻词”。内容表示仍然存在，变化是否影响性能以及影响多少，需要测量。</p>
+<p>PI 通常配合长序列继续训练，让模型适应新尺度。原论文报告的适应成本较低，也不能反过来概括成“必须大量重训才能勉强补救”。</p>
+<h2 id="chapter-02-5-ntk-aware">5. NTK-aware：快的少改，慢的多改</h2>
+<p>PI 对所有通道一视同仁。<strong>NTK-aware scaling</strong>则尝试保留最高频，把更大的缩放留给低频。</p>
+<p>这个名称借用了神经切线核（NTK）的分析视角。理解这里的频率变换不需要先学习 NTK 理论，也不应把名字理解成性能保证。</p>
+<p>一种常见的静态规则是把 RoPE 底数改为：</p>
+<div class="equation"><img src="assets/equations/5bdd00c71a21.svg" alt="b&#x27;=b\alpha^{d/(d-2)}"></div>
+
+<p>将新底数代回频率公式，会得到：</p>
+<div class="equation"><img src="assets/equations/03b00c9c2d84.svg" alt="\frac{\omega&#x27;_i}{\omega_i}=\alpha^{-2i/(d-2)}"></div>
+
+<p>第 0 对不变，最后一对恰好缩为原来的 <code>1/α</code>，中间逐渐过渡。这解释了它为什么能保留最高频的相邻位置角度差。</p>
+<p>但中间通道的缩放小于 PI 的压缩程度，它们在目标长度下仍可能进入原训练范围以外的角度。<strong>保留最高频不等于所有短程行为完全不变；缩放最低频也不等于消除所有分布偏移。</strong></p>
+<p>有些实现还提供 dynamic NTK，根据当前序列长度改变缩放。它与固定的静态规则不同。使用 KV cache（缓存已经计算的 K/V 以加速生成）时，尤其要确认旧缓存与当前旋转规则是否一致。</p>
+<h2 id="chapter-02-6-yarn">6. YaRN：按训练时转了多少圈来分段</h2>
+<p><strong>YaRN</strong>把频率调整和注意力分数尺度调整结合起来。它是一种长上下文扩展方案，通常仍需适应训练与评测。</p>
+<h3 id="chapter-02-_2">先理解“训练范围内的圈数”</h3>
+<p>对第 <code>i</code> 对维度，定义：</p>
+<div class="equation"><img src="assets/equations/d019e1b86b03.svg" alt="r_i=\frac{L_{\mathrm{train}}\omega_i}{2\pi}"></div>
+
+<p><code>rᵢ</code> 表示这一对维度在原训练长度内转过多少圈。</p>
+<p>圈数多的通道转得快；圈数少的通道转得慢。YaRN 根据这个量划分频段：</p>
+<ul>
+<li>高频段：保留原频率，即继续外推。</li>
+<li>低频段：使用 PI 式的频率压缩。</li>
+<li>中间段：在两种频率之间平滑混合。</li>
+</ul>
+<p>用 <code>γᵢ</code> 表示保留原频率的权重，范围是 0 到 1：</p>
+<div class="equation"><img src="assets/equations/00e7c8b59271.svg" alt="\omega&#x27;_i=\gamma_i\omega_i+(1-\gamma_i)\frac{\omega_i}{\alpha}"></div>
+
+<p><code>γᵢ = 1</code> 时不缩放；<code>γᵢ = 0</code> 时完全内插。</p>
+<p>典型规则用两个圈数阈值定位过渡区，例如 <code>βfast = 32</code>、<code>βslow = 1</code>，再在通道编号上做 <strong>线性 ramp（渐变权重）</strong>：让 <code>γᵢ</code> 从高频端的 1 均匀下降到低频端的 0。</p>
+<p>不同实现的取整、边界与配置项可能不同，不能仅凭一条示意曲线互换实现。</p>
+<p><img alt="PI、静态 NTK-aware 与 YaRN 的频率缩放对比" src="assets/04-scaling-methods.png" /></p>
+<p><strong>纵轴表示新频率/原频率。</strong> 1 表示不改，1/8 表示压缩八倍。横轴越向右，通道越慢。</p>
+<p>PI 是水平线；NTK-aware 从 1 逐渐降到 1/8；图中的 YaRN 保留一段高频，在中频过渡，然后让低频停在 1/8。图按明确的阈值与通道 ramp 计算，不把过渡段人为画成 S 曲线。</p>
+<h3 id="chapter-02-_3">为什么还要调整注意力分数</h3>
+<p>先看 Softmax 如何从分数得到权重：</p>
+<div class="equation"><img src="assets/equations/caf36bfde161.svg" alt="p_j=\frac{\exp(a_j/t)}{\sum_k\exp(a_k/t)}"></div>
+
+<p><code>exp(x)</code> 表示 <code>e</code> 的 <code>x</code> 次方；<code>aⱼ</code> 是候选位置的注意力分数，<code>pⱼ</code> 是其权重，<code>t</code> 是温度。温度小于 1 时，分数差被放大，权重通常更集中。</p>
+<p>如果一个相关位置得分为 <code>A</code>，另外 <code>N−1</code> 个干扰位置都得分为 0，它的权重就是：</p>
+<div class="equation"><img src="assets/equations/4f35807a89f5.svg" alt="p=\frac{\exp(A/t)}{\exp(A/t)+N-1}"></div>
+
+<p>这个简化例子说明：分数差固定时，候选位置增多，相关位置的权重可能降低。真实模型的分数并不固定，也不是所有干扰位置都相同，所以不能说长上下文必然把注意力平均摊薄。</p>
+<p><img alt="候选位置增加与分数尺度的模拟" src="assets/05-attention-scaling.png" /></p>
+<p><strong>这是人工设定分数的模拟。</strong> 左图比较候选位置数量变化，右图在 32K 候选位置下比较不同温度。它展示机制，不对应任何模型的实测检索率。</p>
+<p>YaRN 常见的尺度建议为：</p>
+<div class="equation"><img src="assets/equations/c8438346efa2.svg" alt="c=1+0.1\ln\alpha"></div>
+
+<p>如果 Q、K 都乘以 <code>c</code>，点积会乘以 <code>c²</code>，对应上面的温度 <code>t = 1/c²</code>。本例 <code>α = 8</code> 时，<code>t</code> 约为 0.69，而不是固定取 0.4。</p>
+<p>这只是常见规则，具体库和模型可能有自己的尺度配置。分数放大也会强化错误匹配，因此它不能替代训练，更不能保证“大海捞针 100%”。</p>
+<h2 id="chapter-02-7">7. 增大底数与扩展训练是什么关系</h2>
+<p>底数越大，除了最高频，其他通道的频率越低，波长越长。</p>
+<p>例如在 <code>d = 128</code> 下，<code>b = 500,000</code> 时最慢通道的波长约为 256 万 token；<code>b = 1,000,000</code> 时约为 506 万 token。具体数字取决于旋转维度。</p>
+<p>这些较慢的特征可以参与长上下文设计，但<strong>大底数本身不是可靠长上下文的证明</strong>。尤其对一个已经训练好的模型，直接改底数会改变原有位置特征，需要评估是否适应。</p>
+<p>也不能把所有模型统一描述成“预训练大底数，最后都用 YaRN”。模型家族乃至同一系列的不同版本，会使用不同规则。判断实际方案时，应检查精确模型版本的配置、实现和技术报告。</p>
+<h2 id="chapter-02-8">8. 方法之间怎么比较</h2>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>改动</th>
+<th>需要重点验证的风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>直接外推</td>
+<td>保持原位置规则</td>
+<td>超训练长度后是否失效</td>
+</tr>
+<tr>
+<td>PI</td>
+<td>所有频率除以扩展倍数</td>
+<td>改变短程位置尺度后的退化</td>
+</tr>
+<tr>
+<td>静态 NTK-aware</td>
+<td>改底数，逐通道缩放</td>
+<td>中间频段仍然外推的影响</td>
+</tr>
+<tr>
+<td>YaRN</td>
+<td>分频段缩放，加分数尺度调整</td>
+<td>阈值、尺度与训练是否匹配</td>
+</tr>
+</tbody>
+</table>
+<p>这是一组设计选择，不是从“必崩”到“终极方案”的性能排名。实际效果取决于底座模型、扩展倍数、训练数据和评测任务。</p>
+<p>下一章：<a href="#chapter-03">扩展训练到底怎么做</a>。</p></section><section class="chapter" id="chapter-03"><h1 id="chapter-03-03">03 · 扩展训练：让模型真正学会使用长上下文</h1>
+<p>位置缩放让模型得到一套新的位置特征。扩展训练则让模型学习如何在这套特征下，处理更长的输入。</p>
+<p>训练的目标不是把长度配置数字改大，而是同时做到：<strong>长文本能力有提升，短文本能力可接受，训练与推理成本可承担。</strong></p>
+<p>下面讲的是工作流程，不是针对某个模型已经验证过的训练配方。没有具体模型、硬件和数据时，学习率、步数与批量不能凭空定死。</p>
+<h2 id="chapter-03-1">1. 先给扩展目标写一个可检验的定义</h2>
+<p>假设一个 4K 模型需要扩展到 32K，先明确希望它做什么：跨文档检索、阅读长代码、总结长报告，还是根据分散在多处的信息进行推理？</p>
+<p>任务不同，数据和评测都不同。一个模型能从末尾复述目标字符串，并不说明它能比较报告开头和结尾的两组事实。</p>
+<p>还要写下短文本退化容忍度，以及推理延迟、显存等成本上限。这些将决定是否接受某次扩展结果。</p>
+<h2 id="chapter-03-2">2. 先检查底座模型，再决定缩放方案</h2>
+<p>最少检查以下信息：</p>
+<ul>
+<li>精确模型版本、分词器与模型代码版本。</li>
+<li>原始训练长度、当前允许输入长度，两者是否相同。</li>
+<li>RoPE 底数、旋转维度、缩放类型与注意力尺度配置。</li>
+<li>是普通多头注意力，还是使用共享 K/V 头、滑动窗口等结构。</li>
+<li>训练代码与推理引擎能否用同一套位置规则。</li>
+</ul>
+<p><strong>滑动窗口注意力</strong>只让每个位置直接查看附近一段内容。它能降低部分成本，但不能简单当作全序列注意力使用，长距离信息的传播路径也不同。</p>
+<p><strong>KV cache</strong>用于推理时缓存已计算的 K/V。它与训练时用于节省中间激活的技术不是一回事。位置缩放规则如果不一致，缓存中的 K 可能与新计算的 Q 不匹配。</p>
+<p>先在小规模样本上比较原模型、直接外推、候选缩放方案。选好候选后再投入长序列训练，不把“没有训练的配置修改”和“训练后的模型提升”混成一个结果。</p>
+<h2 id="chapter-03-3">3. 长训练样本应该包含什么</h2>
+<h3 id="chapter-03-_1">长文不只是更多字</h3>
+<p>优先使用结构完整、上下文关系自然的长文档，例如章节完整的报告、带依赖关系的代码或跨段讨论。</p>
+<p>把互不相关的短文本拼到 32K，确实能形成长张量，却不一定提供长距离学习信号。模型可能只在每个短片段内完成预测。</p>
+<p>如果使用 <strong>packing（样本打包）</strong>，即把多条样本拼进同一个训练序列，需要明确：不同样本之间是否允许互相注意、位置编号是否重置、损失如何计算。否则训练条件可能偏离实际使用场景。</p>
+<h3 id="chapter-03-_2">要让远处的信息真的有用</h3>
+<p>可以加入需要跨段使用信息的任务：在远处查定义、关联多个证据、追踪代码符号、对照前后约束等。</p>
+<p>训练数据应覆盖答案或证据出现在开头、中间、末尾的情况。只让关键信息靠近问题，会让评测高估模型的长距离能力。</p>
+<h3 id="chapter-03-_3">保留短样本</h3>
+<p>扩展训练会改变位置规则或模型权重。混入一定比例的短样本，有助于维持原来的短文本行为。具体比例要通过消融比较，而不是直接套用一个固定数值。</p>
+<p>还需要去重、清理低质量文本，并保证验证集与训练集隔离。长文档被切成多个窗口时，尤其要避免同一篇文档的相邻窗口跨训练集和验证集泄漏。</p>
+<h2 id="chapter-03-4">4. 继续预训练和监督微调有什么区别</h2>
+<p><strong>继续预训练</strong>沿用下一个 token 预测等语言建模目标，在较长序列上继续训练。它让模型适应长文本分布和新的位置尺度。</p>
+<p><strong>监督微调（SFT）</strong>使用指令与答案，让模型学习按要求完成长文本任务。例如阅读报告后生成摘要，或根据长代码回答问题。</p>
+<p>常见流程是先进行长上下文继续预训练，再做与使用场景匹配的 SFT；也有其他安排。是否需要两个阶段，取决于底座模型和任务，不是固定规定。</p>
+<p>如果使用 SFT，明确哪些 token 计算损失：只训练回答部分，还是同时训练输入部分。这会影响“读长材料”的训练信号。</p>
+<h2 id="chapter-03-5">5. 如何安排长度和训练预算</h2>
+<p>可以逐步增大长度，例如先适应 8K，再到 16K 和 32K；也可以混合多种长度，或者直接使用目标长度。逐级扩展便于观察退化，但它不保证一定优于其他安排。</p>
+<p>每个阶段都应该用评测决定是否继续，而不是只有训练损失下降就自动升级。<strong>训练损失</strong>是衡量当前预测错误程度的数值；<strong>学习率</strong>控制每次更新参数的幅度，两者不是同一个量。</p>
+<h3 id="chapter-03-token">用 token 数看预算</h3>
+<p>一步里处理多少 token，大致由下面的乘积决定：</p>
+<div class="equation"><img src="assets/equations/9f742ea68a7a.svg" alt="B_{\mathrm{tokens}}=L\times B_{\mathrm{seq}}"></div>
+
+<p><code>L</code> 是序列长度，<code>Bseq</code> 是所有设备及梯度累积合计的序列数。不同长度的实验如果只比较训练步数，预算可能差很多。</p>
+<p><strong>梯度累积</strong>把多个小批次的梯度累加后再更新权重，用来增加有效批量；它不会让单条超长序列本身更容易放入显存。</p>
+<p>记录总训练 token 数、真实有效 token 数和样本长度分布。含有大量 padding（用于对齐长度的填充位置）的训练批次，标称 token 数和有效数据量也可能不同。</p>
+<h3 id="chapter-03-_4">长度增加后，成本为什么上升</h3>
+<p>标准稠密自注意力需要考虑位置对，注意力计算量随序列长度近似二次增长。从 4K 到 32K，单条序列的这一部分约增加到 64 倍。</p>
+<p>这不是整个模型总运行时间的固定倍数。投影和前馈网络等部分还有不同的成本，批量、内核和硬件利用率也会影响实测结果。</p>
+<p><strong>FlashAttention</strong>通过更高效的计算与访存，避免在显存中完整保存巨大的注意力矩阵。它降低了中间存储和访存开销，但没有消除稠密注意力计算的二次项。</p>
+<p><strong>梯度检查点（gradient checkpointing）</strong>少存一些中间激活，反向传播时重新计算，用额外计算换显存。更长序列还可能需要序列/上下文并行等技术，应根据实际瓶颈选用。</p>
+<h2 id="chapter-03-6">6. 每个训练阶段应该测什么</h2>
+<h3 id="chapter-03-_5">基础语言建模</h3>
+<p>在独立验证集上测语言建模损失或 <strong>困惑度（perplexity）</strong>。困惑度是平均负对数似然的指数；在相同分词器和评测设置下，通常越低越好。</p>
+<p>按长度和 token 所处位置分组观察。一个混合平均值可能掩盖文本末尾明显恶化的问题。</p>
+<p>困惑度良好说明预测分布没有明显失常，不等于长文推理正确。</p>
+<h3 id="chapter-03-_6">远距离检索</h3>
+<p>“大海捞针”测试是在长干扰文本中放入目标信息，再检查模型是否能找到。需要同时扫描文本长度与目标深度，也就是信息位于全文的哪个相对位置。</p>
+<p>至少包含不同位置、多条目标和有相似干扰项的情况。把信息放在结尾得到高分，不能说明全文范围都可靠。</p>
+<h3 id="chapter-03-_7">实际任务</h3>
+<p>用长文问答、跨段推理、代码依赖分析和摘要等任务评估。加入必须使用远处证据的问题，并检查回答是否只凭常识也能猜中。</p>
+<h3 id="chapter-03-_8">短文本与成本</h3>
+<p>保留短文本基准和固定样例，对比扩展前后的表现。</p>
+<p>同时记录峰值显存、输入处理时间和生成速度。输入处理常被称为 <strong>prefill</strong>，逐 token 生成常被称为 <strong>decode</strong>；两者的瓶颈不同。</p>
+<h2 id="chapter-03-7">7. 一张实验表至少应该记录什么</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>记录内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>底座</td>
+<td>模型/分词器/代码的精确版本</td>
+</tr>
+<tr>
+<td>位置规则</td>
+<td>底数、缩放类型、扩展倍数、频段阈值、分数尺度</td>
+</tr>
+<tr>
+<td>训练</td>
+<td>数据组成、长度分布、总 token、学习率、更新方式</td>
+</tr>
+<tr>
+<td>长文本能力</td>
+<td>分长度的损失、检索、实际任务结果</td>
+</tr>
+<tr>
+<td>退化与代价</td>
+<td>短文本变化、显存、prefill 时间、decode 速度</td>
+</tr>
+</tbody>
+</table>
+<p>最好分开保存三组结果：原模型在原长度内的基线、只改位置规则的结果、进一步训练后的结果。这能看出收益来自位置调整，还是来自训练。</p>
+<p>“LoRA 是否足够”也应作为实验问题。<strong>LoRA</strong>通过训练少量低秩增量参数来适配模型，降低可训练参数量，但不会自动解决长序列激活与注意力计算成本，也不保证与全参数训练相同。</p>
+<h2 id="chapter-03-8">8. 扩展成功的判据</h2>
+<p>目标长度下，模型要在指定任务上可靠使用分散的信息；短文本退化和成本应满足一开始的约束；训练与推理的位置实现还要一致。</p>
+<p>如果只能接受 32K 输入，或者只通过一个简单检索样例，应该如实记录这个较窄的结论。</p>
+<p>进一步阅读：<a href="#chapter-04">数学补充</a> · <a href="#references">参考资料</a>。</p></section><section class="chapter" id="chapter-04"><h1 id="chapter-04-04">04 · 数学补充：公式成立的条件</h1>
+<p>本章不增加主线必需的新概念。它解释前文公式的来源，并说明哪些结论有条件。</p>
+<h2 id="chapter-04-1">1. 旋转为什么留下相对位置</h2>
+<p>记 <code>R(m)</code> 为位置 <code>m</code> 对应的旋转矩阵。每个二维块的角度为 <code>mωᵢ</code>，所有块组成完整旋转矩阵。</p>
+<p>第一章的两个坐标公式，也可以写成这个 2×2 矩阵。左边是旋转后的坐标，右边是原坐标：</p>
+<pre><code class="language-text">┌ x′ ┐   ┌ cos φ   −sin φ ┐ ┌ x ┐
+│    │ = │               │ │   │
+└ y′ ┘   └ sin φ    cos φ ┘ └ y ┘
+</code></pre>
+<p>旋转矩阵是 <strong>正交矩阵</strong>：转置等于逆矩阵。旋转的合成就是角度相加，因此：</p>
+<div class="equation"><img src="assets/equations/fdbcdf1cd97a.svg" alt="R(m)^T R(n)=R(n-m)"></div>
+
+<p>旋转后的 Q/K 分别为 <code>R(m)qₘ</code> 与 <code>R(n)kₙ</code>。它们的点积为：</p>
+<div class="equation"><img src="assets/equations/bbc6d3dfca12.svg" alt="\big(R(m)q_m\big)^T\big(R(n)k_n\big)=q_m^T R(n-m)k_n"></div>
+
+<p>右边的旋转矩阵只依赖位置差 <code>n−m</code>。Q/K 的内容项仍然保留，这正是 RoPE 的相对位置性质。</p>
+<p>如果用“Q 的方向减 K 的方向”描述同一个二维例子，会写成 <code>m−n</code>。两种符号约定是一致的：必须同时保持向量顺序和旋转定义，不能只看差值的符号。</p>
+<h2 id="chapter-04-2">2. 用复数可以怎样理解</h2>
+<p>二维坐标 <code>(x, y)</code> 可以写成复数 <code>z = x + iy</code>，其中 <code>i² = −1</code>。</p>
+<p>欧拉公式把角度和复数联系起来：</p>
+<div class="equation"><img src="assets/equations/2ac8f2eceb98.svg" alt="e^{\mathrm{i}\phi}=\cos\phi+\mathrm{i}\sin\phi"></div>
+
+<p>乘以这个复数，相当于旋转 <code>φ</code>，长度不变。</p>
+<p>两个二维向量的点积等于 <code>q</code> 乘以 <code>k</code> 的共轭，再取实部。共轭把虚部取负号，也就是把角度取负。</p>
+<p>因此，对 <code>q</code> 乘以位置旋转 <code>eⁱᵐω</code>，对 <code>k</code> 乘以 <code>eⁱⁿω</code> 后，点积中的位置因子是 <code>eⁱ⁽ᵐ⁻ⁿ⁾ω</code>。这就是复数版本的相对位置推导。</p>
+<p>如果旋转前的 Q/K 长度为 <code>r_q</code>、<code>r_k</code>，方向为 <code>ψ_q</code>、<code>ψ_k</code>，这对二维坐标贡献的点积是：</p>
+<div class="equation"><img src="assets/equations/a8a2ce13dd3b.svg" alt="r_qr_k\cos\big(\psi_q-\psi_k+(m-n)\omega\big)"></div>
+
+<p>这同时保留了内容向量的长度、方向差和位置差，不能只取其中的 <code>cos((m−n)ω)</code> 当成真实匹配分数。</p>
+<p>实数坐标实现和复数实现都可用。选择哪一种，取决于张量布局、库和内核，不是因为 GPU 无法处理复数。</p>
+<h2 id="chapter-04-3">3. “远程衰减”究竟能说明什么</h2>
+<p>可以把各通道的余弦相加，构造一个用于观察频率集合的函数：</p>
+<div class="equation"><img src="assets/equations/93a2b709686b.svg" alt="C(\Delta)=\frac{2}{d}\sum_{i=0}^{d/2-1}\cos(\Delta\omega_i)"></div>
+
+<p>它相当于让所有通道贡献相同权重、没有额外相位偏移时的位置核示例。</p>
+<p><img alt="不同底数下的等权余弦核" src="assets/06-position-kernel.png" /></p>
+<p><strong>曲线会振荡，不保证逐点下降。</strong> 改底数会改变曲线的尺度，但不能把纵轴叫作“真实模型保留下来的远程信息量”。</p>
+<p>真实点积每个二维块都有由 Q/K 决定的系数。相关理论中的衰减分析或上界，需要相应条件；它不等于任意 Q/K 的点积随距离严格单调递减。</p>
+<p>因此，图可以帮助理解不同频率如何叠加，不能用来证明增大底数一定提高长文能力。</p>
+<h2 id="chapter-04-4-1">4. 为什么最高频是 1，不是奈奎斯特定理的唯一答案</h2>
+<p>在频率公式 <code>ωᵢ = b⁻²ⁱ/ᵈ</code> 中，<code>i = 0</code> 的指数是 0，所以最高频为 1。这是该参数化的选择。</p>
+<p>离散位置采样时，频率有周期等价关系。例如每步角度 <code>ω</code> 和 <code>ω + 2π</code> 在整数位置给出相同的复指数。对余弦信号还存在正负频率等价。</p>
+<p>奈奎斯特分析帮助解释这些离散频率关系，但不会唯一推出 <code>ω = 1</code> 最优。</p>
+<p>尤其是 <code>ω = 2</code> 弧度/token 仍小于 <code>π</code>，不能说它已经越过奈奎斯特界限。余弦周期性反弹也不等于整个多频率 RoPE 的位置表示发生混淆。</p>
+<p>PI 实际上连最高频也会缩放。因此，“所有扩展方法都不敢碰最高频”的说法不成立。</p>
+<h2 id="chapter-04-5-ntk-aware">5. NTK-aware 缩放公式从哪里来</h2>
+<p>原频率为 <code>b⁻²ⁱ/ᵈ</code>，新底数设为 <code>bαᵈ/⁽ᵈ⁻²⁾</code>。把后者代入并与原频率相除，得到：</p>
+<div class="equation"><img src="assets/equations/03b00c9c2d84.svg" alt="\frac{\omega&#x27;_i}{\omega_i}=\alpha^{-2i/(d-2)}"></div>
+
+<p>当 <code>i = 0</code> 时，缩放为 1。</p>
+<p>当 <code>i = d/2 − 1</code> 时，指数为 −1，缩放为 <code>1/α</code>。</p>
+<p>因此，公式满足两个端点目标：最高频不动、最低频与 PI 一样缩放。这只是频率规则的推导，不是对模型外推效果的严格保证。</p>
+<h2 id="chapter-04-6">6. 分块旋转的“完备性”有什么前提</h2>
+<p>考虑一类连续、保长度、按位置差组成的线性变换，可写成 <code>R(m) = exp(mB)</code>，其中 <code>B</code> 是实反对称矩阵，即 <code>Bᵀ = −B</code>。</p>
+<p>线性代数给出的结论是：可以选择一个正交基，把 <code>B</code> 化成二维旋转生成块和可能的零块。于是这类更一般的旋转，可以改写成分块旋转。</p>
+<p>如果 Q/K 来自自由可学习的线性投影，共同的基变换可以吸收进投影权重。从这种表示能力的意义上，二维分块不是随意丢掉了其他旋转形式。</p>
+<p>但这不证明经典固定频率最优，不保证训练过程一样，也不覆盖任意非线性或非保长度的位置编码。更不能推出“所有长度扩展问题都只与频率有关”。</p></section><section class="chapter" id="references"><h1 id="references-_1">参考资料与证据范围</h1>
+<p>下面列出原始资料入口，便于核对概念和进一步阅读。正文是教学整理，没有在本次修订中运行真实模型训练，也不提供未经测量的性能承诺。</p>
+<h2 id="references-_2">原理</h2>
+<ol>
+<li><strong>Attention Is All You Need</strong>（2017）：自注意力、多头注意力、原始正弦位置编码。<a href="https://arxiv.org/abs/1706.03762">论文</a></li>
+<li><strong>RoFormer: Enhanced Transformer with Rotary Position Embedding</strong>（2021）：RoPE 的构造、相对位置性质及分析。<a href="https://arxiv.org/abs/2104.09864">论文</a></li>
+<li>苏剑林，<strong>Transformer 升级之路：2、博采众长的旋转式位置编码</strong>：旋转推导与远程性质讨论。<a href="https://spaces.ac.cn/archives/8265">原文</a></li>
+<li>苏剑林，<strong>Transformer 升级之路：6、旋转位置编码的完备性分析</strong>：分块旋转形式的分析。<a href="https://spaces.ac.cn/archives/9403">原文</a></li>
+</ol>
+<h2 id="references-_3">长度扩展</h2>
+<ol>
+<li><strong>Extending Context Window of Large Language Models via Positional Interpolation</strong>（2023）：PI 与适应训练。<a href="https://arxiv.org/abs/2306.15595">论文</a></li>
+<li><strong>YaRN: Efficient Context Window Extension of Large Language Models</strong>（2023 预印本，ICLR 2024）：分频段缩放、注意力尺度调整及训练评估。<a href="https://arxiv.org/abs/2309.00071">论文</a></li>
+<li><strong>Hugging Face Transformers RoPE utilities</strong>：不同 RoPE 类型的实现与配置；实现会随版本变化。<a href="https://huggingface.co/docs/transformers/main/en/internal/rope_utils">文档</a></li>
+</ol>
+<p>正文中的静态 NTK-aware 公式是一种常见规则，不把它描述成具有统一性能保证的正式定理。动态规则、不同模型的变体需要单独检查。</p>
+<h2 id="references-_4">长序列工程与评测</h2>
+<ol>
+<li><strong>FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness</strong>（2022）：减少注意力计算的访存与中间存储。<a href="https://arxiv.org/abs/2205.14135">论文</a></li>
+<li><strong>Lost in the Middle: How Language Models Use Long Contexts</strong>（2023）：长文本信息所在位置影响模型表现。<a href="https://arxiv.org/abs/2307.03172">论文</a></li>
+<li><strong>RULER: What's the Real Context Size of Your Long-Context Language Models?</strong>（2024）：比单一检索测试更丰富的长上下文评测。<a href="https://arxiv.org/abs/2404.06654">论文</a></li>
+</ol>
+<h2 id="references-_5">图片的来源</h2>
+<p>所有插图由 <code>src/build.py</code> 本地生成，参数直接写在代码与图注中。</p>
+<p>旋转图使用指定的二维向量；频率、圈数和缩放图按公式计算；注意力图使用人工设定的分数；位置核图使用各通道等权余弦求和。它们都不是模型性能实验。</p></section><footer>Markdown 是正文源文件，HTML 与插图由 Python 构建。修订日期：2026-10-14。</footer>
+</article></main></body></html>
