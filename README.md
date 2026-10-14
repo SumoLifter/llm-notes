@@ -6,6 +6,8 @@
 
 - [旋转位置编码与上下文长度扩展](notes/foundations/rope-and-context/README.md)：从注意力基础讲到 RoPE、PI、NTK-aware、YaRN，以及扩展训练与评测。
 - [打开舒适阅读版](notes/foundations/rope-and-context/阅读版.html)：本地 HTML，调整了行距、段间距、公式和插图布局，无需联网。
+- [Tokenization 算法与词表生成机制](notes/foundations/tokenization/README.md)：BPE、WordPiece、SentencePiece/Unigram，以及词表训练、编码和模型兼容性。
+- [Tokenization 阅读版](notes/foundations/tokenization/阅读版.html)：带可复现例子与 Python 插图的本地阅读版。
 
 ## 写作与阅读偏好（后续修改请遵循）
 
@@ -70,12 +72,13 @@
 
 **实验以实验为单位。** 推荐 `experiments/日期-实验名称/`，至少记录目的、模型版本、配置、运行方法和结论。大型权重、数据集和缓存放在专门的数据盘位置，这里只记录路径与获取方法。
 
-**原稿只归档，不继续修改。** 当前原稿保存在 [archive/originals](archive/originals/README.md)。根目录旧文件名保留为跳转入口，方便之前的链接继续使用。
+**原稿只归档，不继续修改。** 当前原稿保存在 [archive/originals](archive/originals/README.md)，后续正文以专题目录中的版本为准。
 
-## 重建当前专题
+## 重建专题
 
 ```powershell
 python notes/foundations/rope-and-context/src/build.py
+python notes/foundations/tokenization/src/build.py
 ```
 
 该命令重绘所有插图，并由 Markdown 生成 HTML 阅读版。依赖见专题内的 `src/requirements.txt`。

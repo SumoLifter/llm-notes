@@ -1,0 +1,646 @@
+{
+  "corpus": {
+    "hug": 10,
+    "pug": 5,
+    "pun": 12,
+    "bun": 4,
+    "hugs": 5
+  },
+  "bpe_history": [
+    {
+      "step": 0,
+      "vocab_size": 7,
+      "splits": {
+        "hug": [
+          "h",
+          "u",
+          "g"
+        ],
+        "pug": [
+          "p",
+          "u",
+          "g"
+        ],
+        "pun": [
+          "p",
+          "u",
+          "n"
+        ],
+        "bun": [
+          "b",
+          "u",
+          "n"
+        ],
+        "hugs": [
+          "h",
+          "u",
+          "g",
+          "s"
+        ]
+      },
+      "token_count": 113
+    },
+    {
+      "step": 1,
+      "pair": [
+        "u",
+        "g"
+      ],
+      "count": 20,
+      "vocab_size": 8,
+      "splits": {
+        "hug": [
+          "h",
+          "ug"
+        ],
+        "pug": [
+          "p",
+          "ug"
+        ],
+        "pun": [
+          "p",
+          "u",
+          "n"
+        ],
+        "bun": [
+          "b",
+          "u",
+          "n"
+        ],
+        "hugs": [
+          "h",
+          "ug",
+          "s"
+        ]
+      },
+      "token_count": 93
+    },
+    {
+      "step": 2,
+      "pair": [
+        "u",
+        "n"
+      ],
+      "count": 16,
+      "vocab_size": 9,
+      "splits": {
+        "hug": [
+          "h",
+          "ug"
+        ],
+        "pug": [
+          "p",
+          "ug"
+        ],
+        "pun": [
+          "p",
+          "un"
+        ],
+        "bun": [
+          "b",
+          "un"
+        ],
+        "hugs": [
+          "h",
+          "ug",
+          "s"
+        ]
+      },
+      "token_count": 77
+    },
+    {
+      "step": 3,
+      "pair": [
+        "h",
+        "ug"
+      ],
+      "count": 15,
+      "vocab_size": 10,
+      "splits": {
+        "hug": [
+          "hug"
+        ],
+        "pug": [
+          "p",
+          "ug"
+        ],
+        "pun": [
+          "p",
+          "un"
+        ],
+        "bun": [
+          "b",
+          "un"
+        ],
+        "hugs": [
+          "hug",
+          "s"
+        ]
+      },
+      "token_count": 62
+    },
+    {
+      "step": 4,
+      "pair": [
+        "p",
+        "un"
+      ],
+      "count": 12,
+      "vocab_size": 11,
+      "splits": {
+        "hug": [
+          "hug"
+        ],
+        "pug": [
+          "p",
+          "ug"
+        ],
+        "pun": [
+          "pun"
+        ],
+        "bun": [
+          "b",
+          "un"
+        ],
+        "hugs": [
+          "hug",
+          "s"
+        ]
+      },
+      "token_count": 50
+    },
+    {
+      "step": 5,
+      "pair": [
+        "hug",
+        "s"
+      ],
+      "count": 5,
+      "vocab_size": 12,
+      "splits": {
+        "hug": [
+          "hug"
+        ],
+        "pug": [
+          "p",
+          "ug"
+        ],
+        "pun": [
+          "pun"
+        ],
+        "bun": [
+          "b",
+          "un"
+        ],
+        "hugs": [
+          "hugs"
+        ]
+      },
+      "token_count": 45
+    },
+    {
+      "step": 6,
+      "pair": [
+        "p",
+        "ug"
+      ],
+      "count": 5,
+      "vocab_size": 13,
+      "splits": {
+        "hug": [
+          "hug"
+        ],
+        "pug": [
+          "pug"
+        ],
+        "pun": [
+          "pun"
+        ],
+        "bun": [
+          "b",
+          "un"
+        ],
+        "hugs": [
+          "hugs"
+        ]
+      },
+      "token_count": 40
+    },
+    {
+      "step": 7,
+      "pair": [
+        "b",
+        "un"
+      ],
+      "count": 4,
+      "vocab_size": 14,
+      "splits": {
+        "hug": [
+          "hug"
+        ],
+        "pug": [
+          "pug"
+        ],
+        "pun": [
+          "pun"
+        ],
+        "bun": [
+          "bun"
+        ],
+        "hugs": [
+          "hugs"
+        ]
+      },
+      "token_count": 36
+    }
+  ],
+  "bpe_hugs_after_three_merges": [
+    "hug",
+    "s"
+  ],
+  "bpe_rank_counterexample": [
+    "a",
+    "bc"
+  ],
+  "wordpiece_teaching_history": [
+    {
+      "step": 1,
+      "selected": {
+        "pair": [
+          "##g",
+          "##s"
+        ],
+        "pair_count": 5,
+        "left_count": 20,
+        "right_count": 5,
+        "score": 0.05
+      },
+      "candidates": [
+        {
+          "pair": [
+            "##g",
+            "##s"
+          ],
+          "pair_count": 5,
+          "left_count": 20,
+          "right_count": 5,
+          "score": 0.05
+        },
+        {
+          "pair": [
+            "##u",
+            "##g"
+          ],
+          "pair_count": 20,
+          "left_count": 36,
+          "right_count": 20,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "##u",
+            "##n"
+          ],
+          "pair_count": 16,
+          "left_count": 36,
+          "right_count": 16,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "b",
+            "##u"
+          ],
+          "pair_count": 4,
+          "left_count": 4,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "h",
+            "##u"
+          ],
+          "pair_count": 15,
+          "left_count": 15,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "p",
+            "##u"
+          ],
+          "pair_count": 17,
+          "left_count": 17,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        }
+      ],
+      "splits": {
+        "hug": [
+          "h",
+          "##u",
+          "##g"
+        ],
+        "pug": [
+          "p",
+          "##u",
+          "##g"
+        ],
+        "pun": [
+          "p",
+          "##u",
+          "##n"
+        ],
+        "bun": [
+          "b",
+          "##u",
+          "##n"
+        ],
+        "hugs": [
+          "h",
+          "##u",
+          "##gs"
+        ]
+      }
+    },
+    {
+      "step": 2,
+      "selected": {
+        "pair": [
+          "##u",
+          "##g"
+        ],
+        "pair_count": 15,
+        "left_count": 36,
+        "right_count": 15,
+        "score": 0.027777777777777776
+      },
+      "candidates": [
+        {
+          "pair": [
+            "##u",
+            "##g"
+          ],
+          "pair_count": 15,
+          "left_count": 36,
+          "right_count": 15,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "##u",
+            "##gs"
+          ],
+          "pair_count": 5,
+          "left_count": 36,
+          "right_count": 5,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "##u",
+            "##n"
+          ],
+          "pair_count": 16,
+          "left_count": 36,
+          "right_count": 16,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "b",
+            "##u"
+          ],
+          "pair_count": 4,
+          "left_count": 4,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "h",
+            "##u"
+          ],
+          "pair_count": 15,
+          "left_count": 15,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        },
+        {
+          "pair": [
+            "p",
+            "##u"
+          ],
+          "pair_count": 17,
+          "left_count": 17,
+          "right_count": 36,
+          "score": 0.027777777777777776
+        }
+      ],
+      "splits": {
+        "hug": [
+          "h",
+          "##ug"
+        ],
+        "pug": [
+          "p",
+          "##ug"
+        ],
+        "pun": [
+          "p",
+          "##u",
+          "##n"
+        ],
+        "bun": [
+          "b",
+          "##u",
+          "##n"
+        ],
+        "hugs": [
+          "h",
+          "##u",
+          "##gs"
+        ]
+      }
+    },
+    {
+      "step": 3,
+      "selected": {
+        "pair": [
+          "##u",
+          "##gs"
+        ],
+        "pair_count": 5,
+        "left_count": 21,
+        "right_count": 5,
+        "score": 0.047619047619047616
+      },
+      "candidates": [
+        {
+          "pair": [
+            "##u",
+            "##gs"
+          ],
+          "pair_count": 5,
+          "left_count": 21,
+          "right_count": 5,
+          "score": 0.047619047619047616
+        },
+        {
+          "pair": [
+            "##u",
+            "##n"
+          ],
+          "pair_count": 16,
+          "left_count": 21,
+          "right_count": 16,
+          "score": 0.047619047619047616
+        },
+        {
+          "pair": [
+            "b",
+            "##u"
+          ],
+          "pair_count": 4,
+          "left_count": 4,
+          "right_count": 21,
+          "score": 0.047619047619047616
+        },
+        {
+          "pair": [
+            "h",
+            "##u"
+          ],
+          "pair_count": 5,
+          "left_count": 15,
+          "right_count": 21,
+          "score": 0.015873015873015872
+        },
+        {
+          "pair": [
+            "h",
+            "##ug"
+          ],
+          "pair_count": 10,
+          "left_count": 15,
+          "right_count": 15,
+          "score": 0.044444444444444446
+        },
+        {
+          "pair": [
+            "p",
+            "##u"
+          ],
+          "pair_count": 12,
+          "left_count": 17,
+          "right_count": 21,
+          "score": 0.03361344537815126
+        },
+        {
+          "pair": [
+            "p",
+            "##ug"
+          ],
+          "pair_count": 5,
+          "left_count": 17,
+          "right_count": 15,
+          "score": 0.0196078431372549
+        }
+      ],
+      "splits": {
+        "hug": [
+          "h",
+          "##ug"
+        ],
+        "pug": [
+          "p",
+          "##ug"
+        ],
+        "pun": [
+          "p",
+          "##u",
+          "##n"
+        ],
+        "bun": [
+          "b",
+          "##u",
+          "##n"
+        ],
+        "hugs": [
+          "h",
+          "##ugs"
+        ]
+      }
+    }
+  ],
+  "wordpiece_playing": [
+    "play",
+    "##ing"
+  ],
+  "wordpiece_playz": [
+    "[UNK]"
+  ],
+  "unigram_probabilities": {
+    "ab": 0.4,
+    "a": 0.15,
+    "b": 0.15,
+    "aba": 0.1,
+    "bab": 0.2
+  },
+  "unigram_paths": [
+    {
+      "pieces": [
+        "ab",
+        "ab"
+      ],
+      "probability": 0.16000000000000003
+    },
+    {
+      "pieces": [
+        "a",
+        "bab"
+      ],
+      "probability": 0.03
+    },
+    {
+      "pieces": [
+        "aba",
+        "b"
+      ],
+      "probability": 0.015
+    },
+    {
+      "pieces": [
+        "ab",
+        "a",
+        "b"
+      ],
+      "probability": 0.009
+    },
+    {
+      "pieces": [
+        "a",
+        "b",
+        "ab"
+      ],
+      "probability": 0.009
+    },
+    {
+      "pieces": [
+        "a",
+        "b",
+        "a",
+        "b"
+      ],
+      "probability": 0.00050625
+    }
+  ],
+  "unigram_best": [
+    "ab",
+    "ab"
+  ],
+  "unigram_best_probability": 0.16000000000000003,
+  "unigram_string_probability": 0.22350625000000002
+}

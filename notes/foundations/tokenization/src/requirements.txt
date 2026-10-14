@@ -1,0 +1,4 @@
+numpy>=1.24
+matplotlib>=3.8
+Markdown>=3.5
+Pillow>=10.0

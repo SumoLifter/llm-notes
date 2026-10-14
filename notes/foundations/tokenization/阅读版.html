@@ -1,0 +1,482 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tokenization 算法与词表生成机制 · 阅读版</title><style>
+:root{--ink:#263440;--muted:#72808b;--accent:#24649a;--paper:#fff;--bg:#f5f4ef}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:36px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif}
+nav{position:fixed;top:0;left:0;width:260px;height:100vh;padding:48px 28px;overflow:auto;border-right:1px solid #e1e4e5}
+nav .brand{font-size:12px;letter-spacing:.15em;color:var(--muted);margin-bottom:32px}
+nav a{display:block;font-size:14px;line-height:1.8;padding:10px 0;color:#4c6170;text-decoration:none}
+nav a:hover{color:var(--accent)}nav hr{border:0;border-top:1px solid #dfe4e7;margin:28px 0}
+nav p{font-size:12px;line-height:1.9;color:var(--muted)}
+main{margin:0 0 0 260px;padding:64px 56px 120px}article{max-width:810px;margin:auto}
+header{padding:24px 0 64px}.eyebrow{font-size:13px;color:var(--accent);letter-spacing:.12em}
+header h1{font-size:36px;line-height:1.55;margin:20px 0 24px;letter-spacing:.01em}
+header p{color:#617381;font-size:19px;line-height:1.9;max-width:660px}
+.chapter{background:var(--paper);padding:52px 52px 60px;margin:0 0 72px;border:1px solid #e6e9eb;border-radius:8px}
+.chapter h1{font-size:28px;line-height:1.65;margin:0 0 32px;font-weight:650}
+.chapter h2{font-size:23px;line-height:1.65;margin:64px 0 24px;padding-top:12px;border-top:1px solid #e7ecef;font-weight:650}
+.chapter h3{font-size:20px;line-height:1.7;margin:36px 0 16px;font-weight:650}
+p,li{font-size:19px;line-height:1.95;overflow-wrap:break-word}
+p{margin:0 0 26px}ul,ol{padding-left:1.5em;margin:24px 0 32px}li{margin:0 0 14px}
+strong{font-weight:650;color:#233e50}a{color:var(--accent);text-underline-offset:4px}
+code{font-family:'Microsoft YaHei',sans-serif;font-size:.91em;background:#f0f4f7;border-radius:4px;padding:2px 5px}
+pre{overflow-x:auto;background:#f7f9fa;padding:24px 18px;margin:28px 0;border-radius:6px;line-height:1.9}pre code{font-family:Consolas,'Courier New',monospace;background:transparent;padding:0;font-size:15px}
+.equation{margin:32px 0 36px;padding:28px 20px;text-align:center;background:#f7f9fa;border-radius:6px;overflow-x:auto}
+.equation img{max-width:100%;height:auto;vertical-align:middle}
+p:has(>img){margin:38px -24px 28px;padding:12px 0;background:white}
+p>img{display:block;width:100%;height:auto}
+.illustration{margin:38px -24px 28px;padding:12px 0;background:white}
+.illustration img{display:block;width:100%;height:auto}
+.illustration figcaption{text-align:center;font-size:12px;line-height:1.8;color:var(--muted);margin-top:14px}
+table{border-collapse:collapse;width:100%;margin:32px 0;font-size:15px;line-height:1.8}
+th,td{text-align:left;padding:14px 12px;border-bottom:1px solid #e1e7eb;vertical-align:top}
+th{background:#f1f5f7;font-weight:650}blockquote{border-left:3px solid #b6cbd8;margin:28px 0;padding-left:20px}
+footer{font-size:13px;line-height:1.9;color:var(--muted)}
+@media(min-width:1450px){main{padding-right:130px}}
+@media(max-width:1050px){nav{width:210px;padding:32px 20px}main{margin-left:210px;padding:40px 24px}.chapter{padding:38px 32px}p,li{font-size:18px}}
+@media(max-width:760px){nav{position:static;width:auto;height:auto;padding:24px;border:0;border-bottom:1px solid #ddd}nav .brand{margin-bottom:12px}nav a{display:inline-block;margin-right:14px;font-size:13px}nav hr,nav p{display:none}main{margin:0;padding:28px 16px 60px}header{padding:10px 8px 32px}header h1{font-size:28px}.chapter{padding:30px 22px;margin-bottom:36px}.chapter h1{font-size:24px}.chapter h2{font-size:21px;margin-top:48px}p,li{font-size:17px;line-height:1.9}p:has(>img){margin-left:-12px;margin-right:-12px}table{font-size:13px}th,td{padding:10px 6px}.equation{padding:22px 10px}}
+@media print{nav{display:none}main{margin:0;padding:0}body{background:white}.chapter{border:0;padding:24px 0;break-before:page}h1,h2,h3{break-after:avoid}.equation,p:has(>img){break-inside:avoid}header{padding-bottom:30px}}
+@media(max-width:760px){.illustration{margin-left:-12px;margin-right:-12px}pre code{white-space:pre-wrap;overflow-wrap:anywhere}}
+@media print{.illustration{break-inside:avoid}.illustration figcaption{display:none}}
+</style></head>
+<body><nav aria-label="章节目录"><div class="brand">大模型 · 基础原理</div><a href="#chapter-01">01 · 从文本到 token</a><a href="#chapter-02">02 · BPE 与 WordPiece</a><a href="#chapter-03">03 · SentencePiece / Unigram</a><a href="#chapter-04">04 · 词表生成与实践</a><a href="#chapter-05">05 · 实验与参考资料</a>
+<hr><a href="README.md">专题源文件</a><a href="../../../README.md">资料总入口</a>
+<p>先分清词表训练和文本编码，再比较具体方法。<br>图、公式均可离线显示。</p></nav>
+<main><article><header><div class="eyebrow">从文本到模型输入</div>
+<h1>Tokenization 算法<br>与词表生成机制</h1>
+<p>词表是怎么学出来的？新词又怎样切分？从一份可以手算的小语料开始，理解 BPE、WordPiece 与 SentencePiece。</p>
+<p>SentencePiece 是工具，可使用 BPE 或 Unigram。示例结果来自教学代码，不代表任何现成模型的词表。</p></header>
+<section class="chapter" id="chapter-01"><h1 id="chapter-01-01">01 · 文本怎样变成模型能接收的编号</h1>
+<p>一段文字进入语言模型之前，首先经过 <strong>tokenization（分词或标记化）</strong>：把文本拆成模型使用的基本单元，并转换成整数 ID。</p>
+<p>这里的“分词”不一定是按自然语言里的完整词切分。<code>playing</code> 可以是一个 token，也可以是 <code>play</code> 和 <code>ing</code>；一个汉字可能是一个 token，也可能拆成多个字节 token。</p>
+<h2 id="chapter-01-1-token">1. 先分清字符、字节和 token</h2>
+<p><strong>字符</strong>是文本中的符号，例如 <code>A</code>、<code>中</code>。处理 Unicode 时，还要区分字符编码的码点与人眼看到的字形；一个显示出来的字形可能由多个码点组成。</p>
+<p><strong>字节</strong>是计算机编码文本的基础单位。采用 UTF-8 时，<code>A</code> 通常占 1 字节，<code>中</code> 占 3 字节。一个字节不是一个汉字，也不是固定的一段意思。</p>
+<p><strong>Token</strong>是分词器选定的单元。它可以对应完整词、子词、字符、一个字节，或者一串字节。</p>
+<p>因此，“一个 token 等于多少字”只能在指定模型、语言和文本上做统计，不能当作普遍换算关系。</p>
+<h2 id="chapter-01-2">2. 为什么通常不直接按完整词切分</h2>
+<p>如果每个完整词都占一个词表位置，英文的时态变化、专有名词，以及代码中的新标识符，会让词表不断膨胀。中文又没有天然的空格词边界。</p>
+<p>另一端是只用字符或字节。这样基础单位少，但常见长词也需要很多 token，序列更长。</p>
+<p><strong>子词（subword）</strong>在两者之间取折中：把常见片段收进词表，不常见的字符串拆成较小片段。片段可以像词根、词尾，也可能只是一串常见字符，不保证有独立语言学意义。</p>
+<h2 id="chapter-01-3-id">3. 词表是什么，ID 又是什么</h2>
+<p><strong>词表（vocabulary）</strong>是模型能够使用的有限 token 集合。每个 token 对应一个整数 ID，例如下面这个人为指定的词表片段：</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>play</code></td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>ing</code></td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>!</code></td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>如果分词结果是 <code>play | ing | !</code>，就可以编码成 <code>[0, 1, 2]</code>。这些数字只是编号，不表示“play 的意思比 ing 小”，也不是词频。</p>
+<p>语言模型拿到 ID 后，查找 <strong>embedding（嵌入）</strong>：每个 ID 对应一行可学习的向量。通常先确定分词器与词表，再在模型训练中学习这些向量。</p>
+<p>所以，词表生成与 embedding 学习是不同过程。分词器能把词切出来，并不说明模型已经理解了这个词。</p>
+<h2 id="chapter-01-4">4. 一个完整分词器通常有哪些步骤</h2>
+<p>先看流程中的职责，再讨论具体算法。</p>
+<figure class="illustration"><a href="assets/01-tokenizer-pipeline.svg" target="_blank" rel="noopener"><img alt="文本编码与分词器训练的区别" src="assets/01-tokenizer-pipeline.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
+<p><strong>上半部分是训练分词器，下半部分是编码新文本。</strong> 词表与切分规则通过训练生成，之后供编码使用；不会为每一次用户输入重新生成一份词表。</p>
+<h3 id="chapter-01-_1">规范化：先决定保留哪些文本差别</h3>
+<p><strong>Normalization（规范化）</strong>可能包括大小写转换、Unicode 规范化等。例如把某些兼容字符转换成统一形式。</p>
+<p>这样会减少表示差异，但也可能丢失信息。若把 <code>Apple</code> 改成 <code>apple</code>，解码后无法自动知道原来首字母是大写。</p>
+<h3 id="chapter-01-_2">预切分：先划定局部处理范围</h3>
+<p><strong>Pre-tokenization（预切分）</strong>可以按空格、标点或规则先把文本分段，然后在每段内部应用子词算法。</p>
+<p>例如先把 <code>hello, world</code> 划成若干段，再对各段使用 BPE。普通的词内 BPE 不会跨已经确定的边界合并。具体边界取决于实现，不是 BPE 名字本身规定的。</p>
+<p>有些系统直接处理规范化后的整段文本，不要求外部先做语言学分词。SentencePiece 属于这个方向，但它仍然可能根据空白、文字类型等配置约束候选片段。</p>
+<h3 id="chapter-01-id">子词切分与 ID 映射</h3>
+<p>BPE、WordPiece 或 Unigram 在这里决定：用词表中的哪些片段表示当前文本。</p>
+<p>随后查词表得到 ID。为了完成这一步，通常不止需要一个 <code>token → ID</code> 字典；还可能需要合并顺序、概率分数、前缀约定等规则。</p>
+<h3 id="chapter-01-_3">后处理与解码</h3>
+<p><strong>后处理</strong>可能插入句首、句尾等特殊 token，或者组织多段输入。聊天模板还会加入角色和轮次结构，这不等于子词算法本身。</p>
+<p><strong>解码</strong>把 ID 转回文本，处理空白标记、字节拼接等细节。如果前面的规范化丢失了信息，或者解码主动跳过特殊 token，就不能保证还原原始输入的每一个字符。</p>
+<h2 id="chapter-01-5">5. “训练分词器”和“使用分词器”有什么区别</h2>
+<p>训练阶段读取语料，决定哪些片段进入词表，以及新字符串应该怎样切分。</p>
+<p>使用阶段保持词表和规则固定，把新文本转为 ID。通常也叫 encode；反向过程叫 decode。</p>
+<p>对于标准文本生成模型，输出层同样对应这份词表。模型每一步预测下一个 token ID，最后再解码为文字，并不是直接生成汉字或完整单词。</p>
+<p>后文始终把这两条线分开讲：先问词表怎么来，再问固定词表如何使用。</p>
+<p>下一章：<a href="#chapter-02">BPE 与 WordPiece</a>。</p></section><section class="chapter" id="chapter-02"><h1 id="chapter-02-02-bpe-wordpiece">02 · BPE 与 WordPiece：合并什么，怎样切新词</h1>
+<p>BPE 和 WordPiece 都能从较小单元出发，逐渐加入更大的子词。但它们的训练选择和编码规则并不相同。</p>
+<p>本章使用同一份小语料，实际计算计数。为方便观察，所有词已经转成小写并按词预切分，不跨词边界合并。</p>
+<h2 id="chapter-02-1">1. 一份可以手算的训练语料</h2>
+<table>
+<thead>
+<tr>
+<th>词</th>
+<th>出现次数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hug</code></td>
+<td>10</td>
+</tr>
+<tr>
+<td><code>pug</code></td>
+<td>5</td>
+</tr>
+<tr>
+<td><code>pun</code></td>
+<td>12</td>
+</tr>
+<tr>
+<td><code>bun</code></td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>hugs</code></td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<p>“出现次数”会作为训练权重。例如 <code>hug</code> 的 <code>h u g</code> 这条序列，在统计时贡献 10 份计数。</p>
+<p><strong>相邻对</strong>指一条序列中左右相接的两个单元。<code>h u g</code> 有 <code>(h,u)</code> 和 <code>(u,g)</code> 两个相邻对。</p>
+<h2 id="chapter-02-2-bpe">2. BPE：先合并出现最多的相邻对</h2>
+<p><strong>BPE（Byte Pair Encoding，字节对编码）</strong>最早用于数据压缩。应用到子词分词时，通常反复合并最常见的相邻单元。</p>
+<p>名字里的“Byte”不表示所有 NLP 版本都从字节开始。本节从字符开始，下一章之后会说明字节级方案。</p>
+<h3 id="chapter-02-_1">第一步：准备最小单元</h3>
+<p>词表最初包含语料用到的字符：<code>b, g, h, n, p, s, u</code>。</p>
+<p>所有词都拆成字符。例如 <code>hugs → h | u | g | s</code>。</p>
+<h3 id="chapter-02-_2">第二步：统计相邻对</h3>
+<p><code>u g</code> 同时出现在 <code>hug</code>、<code>pug</code> 和 <code>hugs</code> 中，计数为 <code>10 + 5 + 5 = 20</code>。</p>
+<p>其他候选包括 <code>p u</code> 的 17 次、<code>u n</code> 的 16 次，以及 <code>h u</code> 的 15 次。最高的是 <code>u g</code>，因此先加入新 token <code>ug</code>。</p>
+<p>合并后：</p>
+<pre><code class="language-text">hug  → h | ug
+pug  → p | ug
+pun  → p | u | n
+bun  → b | u | n
+hugs → h | ug | s
+</code></pre>
+<h3 id="chapter-02-_3">第三步：重算，继续合并</h3>
+<p>计数必须按新切分重新计算，不能沿用旧相邻对列表。</p>
+<p>下一轮 <code>u n</code> 出现 16 次，因此合并成 <code>un</code>。再下一轮 <code>h ug</code> 出现 15 次，合并成 <code>hug</code>。</p>
+<figure class="illustration"><a href="assets/02-bpe-merges.svg" target="_blank" rel="noopener"><img alt="BPE 的前三次合并与语料切分变化" src="assets/02-bpe-merges.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
+<p><strong>每一行都是上一轮更新后的结果。</strong> 新 token 来自统计，但不会自动删除基础字符。因此前三轮后，词表包含原来的 7 个字符，以及 <code>ug</code>、<code>un</code>、<code>hug</code>。</p>
+<p>实际训练通常按目标词表大小或合并次数停止，也可能设最小出现频次等条件。候选计数并列时，具体实现的择优规则会影响结果。</p>
+<h2 id="chapter-02-3-bpe">3. BPE 编码不是简单的“找最长词表项”</h2>
+<p>词表固定后，BPE 还需要训练得到的 <strong>merge rank（合并优先级）</strong>，通常由合并发生的先后顺序决定。</p>
+<p>新词先拆成基础单元，然后按可用合并的优先级逐步合并。例如只使用上面三条规则，<code>hugs</code> 会先得到 <code>h | ug | s</code>，再得到 <code>hug | s</code>。</p>
+<p>为什么词表字典本身还不够？看这个专门构造的小例子：</p>
+<pre><code class="language-text">优先规则 1：b + c  → bc
+优先规则 2：a + b  → ab
+输入：abc
+</code></pre>
+<p>BPE 先应用优先级更高的 <code>b+c</code>，得到 <code>a | bc</code>。</p>
+<p>如果只是从左往右选最长词表项，则会选 <code>ab | c</code>。两者不同，所以不能把 BPE 编码说成“最大匹配分词”。</p>
+<h2 id="chapter-02-4-wordpiece">4. WordPiece：为什么不是只看相邻对计数</h2>
+<p><strong>WordPiece</strong>也是子词方案，BERT 的分词器是它的常见实例。</p>
+<p>原始训练过程与语言模型似然有关。<strong>似然</strong>可以理解为：当前子词模型给训练语料赋予了多大的概率。更能解释语料的候选，可能比单纯出现多的候选更有价值。</p>
+<p>这里有一条需要明确的边界：原始训练实现没有完整公开。很多教学材料用下列归一化分数说明合并偏好，但不能把它当成所有 WordPiece 训练器的精确公式。</p>
+<div class="equation"><img src="assets/equations/a8c6ae38941b.svg" alt="s(a,b)=\frac{f(a,b)}{f(a)f(b)}"></div>
+
+<p><code>f(a,b)</code> 是相邻对的加权计数；<code>f(a)</code> 和 <code>f(b)</code> 是两个单元各自的加权出现次数。这里的分数是比较指标，不是一个合法的片段概率，也不能直接代替语言模型似然增益。</p>
+<p>直观上：如果 <code>a</code>、<code>b</code> 到处都出现，它们碰到一起就不一定值得优先形成新 token；如果它们相对更常结伴，归一化后的分数可能更高。</p>
+<h2 id="chapter-02-5">5. 先介绍 <code>##</code>，再看训练例子</h2>
+<p>典型 BERT WordPiece 用 <code>##</code> 标记“这个片段接在词的中间”，例如 <code>playing → play | ##ing</code>。</p>
+<p><code>##</code> 是 token 字符串中的约定，不是原文中真的有两个井号，也不是所有 WordPiece 系统都必须采用的符号。</p>
+<p>在我们的例子里，<code>hugs</code> 的初始形式是 <code>h | ##u | ##g | ##s</code>。词首 <code>h</code> 与词内 <code>##h</code> 是不同的词表项。</p>
+<h3 id="chapter-02-_4">同一语料为什么会得到不同选择</h3>
+<p><code>##u</code> 出现 36 次，<code>##g</code> 出现 20 次，<code>##s</code> 出现 5 次。</p>
+<p><code>##u ##g</code> 出现 20 次，分数为 <code>20/(36×20) = 1/36 ≈ 0.0278</code>。</p>
+<p><code>##g ##s</code> 只出现 5 次，但分数为 <code>5/(20×5) = 1/20 = 0.05</code>。</p>
+<p>所以按这个教学评分，先加入的是 <code>##gs</code>，而不是 BPE 首轮的 <code>ug</code>。</p>
+<figure class="illustration"><a href="assets/03-wordpiece-scores.svg" target="_blank" rel="noopener"><img alt="频次与归一化合并分数的对比" src="assets/03-wordpiece-scores.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
+<p><strong>左图看原始计数，右图看教学分数。</strong> 两套规则对同一个候选集合产生不同排序；这说明训练目标会改变词表，不是证明 WordPiece 永远优于 BPE。</p>
+<p>继续训练时，同样要更新切分和计数。收进词表的子词也不一定是完整单词。</p>
+<h2 id="chapter-02-6-wordpiece">6. WordPiece 编码：从左到右贪心找最长匹配</h2>
+<p><strong>贪心</strong>指每一步先选择当前看起来最合适的选项，不回头枚举整条字符串的所有切分。典型 WordPiece 使用最长前缀匹配。</p>
+<p>假设固定词表包含：</p>
+<pre><code class="language-text">play, ##ing, ##er, ##s, [UNK]
+</code></pre>
+<p>对 <code>playing</code>，从词首找最长可用片段，得到 <code>play</code>；剩余 <code>ing</code> 要按词内形式查询，找到 <code>##ing</code>。结果是 <code>play | ##ing</code>。</p>
+<p>这里不需要按训练时的合并顺序重新合并。<strong>BPE 编码依赖合并优先级，WordPiece 编码主要依赖词表及词首/词内约定。</strong></p>
+<h3 id="chapter-02-_5">匹配失败时会怎样</h3>
+<p><code>[UNK]</code> 是 unknown token，即未知 token。</p>
+<p>对 <code>playz</code>，虽然开头能找到 <code>play</code>，但剩下的 <code>z</code> 没有可用的 <code>##z</code>。典型 BERT WordPiece 会把整个预切分单元输出为 <code>[UNK]</code>，不是保留 <code>play</code> 再只把 <code>z</code> 替换成未知符号。</p>
+<p>具体系统可能采用不同回退策略，还可能限制单词长度；迁移时应检查真实实现。</p>
+<h2 id="chapter-02-7">7. 这两个方案怎样生成词表</h2>
+<p>两者通常都从基础单元开始，反复增加子词；区别在于候选选择的目标，以及生成词表后如何切分新文本。</p>
+<p>BPE 常见的交付物是词表和有序合并规则。WordPiece 常见的交付物是词表，加上规范化、预切分、词内前缀和未知处理等配置。</p>
+<p>只复制一份可见 token 列表，可能无法复制原分词器的完整行为。</p>
+<p>下一章：<a href="#chapter-03">SentencePiece 与 Unigram</a>。</p></section><section class="chapter" id="chapter-03"><h1 id="chapter-03-03-sentencepiece">03 · SentencePiece：工具、空白标记与概率切分</h1>
+<p>上一章讨论了两种子词方法。这一章先澄清名称：<strong>SentencePiece 是训练和使用分词器的工具，不是一种与 BPE 完全互斥的算法。</strong></p>
+<p>它支持 BPE、Unigram，以及字符、词级模型等选项。这里重点讲它的文本处理方式与 Unigram。</p>
+<h2 id="chapter-03-1">1. 为什么强调“从原始句子训练”</h2>
+<p>很多子词训练流程先按完整词切分，再在词内学习片段。对于没有自然空格词边界的中文、日文，这一步可能依赖语言专用分词器。</p>
+<p>SentencePiece 可以直接从句子文本训练，不要求外部先给出语言学意义上的词边界。输入会经过它配置的规范化和训练规则。</p>
+<p>“不要求外部分词”不等于“完全没有边界约束”。例如按空白、数字或文字类型约束候选片段的配置，仍然会影响哪些 token 能被学出来。</p>
+<h2 id="chapter-03-2">2. <code>▁</code> 是什么，为什么经常出现在词前</h2>
+<p>SentencePiece 常用 <code>▁</code>（U+2581，下划块）作为空白的可见表示。它不是普通下划线 <code>_</code>。</p>
+<p>比如，在一份假设词表中：</p>
+<pre><code class="language-text">原文：I love NLP
+内部示意：▁I▁love▁NLP
+可能切分：▁I | ▁love | ▁N | LP
+</code></pre>
+<p>这些片段只是示例，不是指定 SentencePiece 模型的实测输出。</p>
+<p>开头的 <code>▁</code> 不一定表示原文真的以空格开头。默认配置通常会添加一个 dummy prefix（虚拟前缀），让句首也能按类似词边界的形式处理。</p>
+<p>这个标记可以被包含在一个更长 token 内，因此 <code>▁love</code> 与 <code>love</code> 可能是不同词表项。</p>
+<h3 id="chapter-03-_1">能否原样恢复所有空格</h3>
+<p>如果空白被作为符号保留下来，解码就更容易重建边界。但 SentencePiece 常用的默认规范化还会处理连续空白等差异，并采用基于 NFKC 的 Unicode 规范化。</p>
+<p><strong>NFKC</strong>是一种兼容性规范化：将某些外观或编码不同的兼容字符转换成统一形式。这可能改变原始文本。</p>
+<p>因此，不能仅看到 <code>▁</code> 就承诺逐字符还原所有原始空白与字形。是否可逆，需要结合规范化、虚拟前缀与空白配置讨论。</p>
+<h2 id="chapter-03-3-sentencepiece-bpe">3. SentencePiece 使用 BPE 时，学的仍是合并规则</h2>
+<p>选择 <code>model_type=bpe</code>，核心仍然是相邻单元的统计合并。</p>
+<p>区别是它把文本处理、空白标记、训练、模型文件与解码整合到同一工具中。生成的词表可能带有 <code>▁</code>，而不是 BERT 式的 <code>##</code>。</p>
+<p><strong>算法相同，不代表配置相同或输出相同。</strong> 预处理、基础单位、边界约束、语料与目标词表规模变化，都可能改变结果。</p>
+<h2 id="chapter-03-4-unigram">4. Unigram：先给每个片段一个概率</h2>
+<p><strong>Unigram（单元语言模型）</strong>在这里是假设每个子词独立出现的概率模型。它用于判断切分，不是说后面的 Transformer 也不看上下文。</p>
+<p>假设某条切分得到片段 <code>t₁, t₂, …, tₖ</code>，每个片段有概率 <code>p(tⱼ)</code>。这条切分路径的概率是：</p>
+<div class="equation"><img src="assets/equations/c672a3f1a6e7.svg" alt="P(t_1,\ldots,t_k)=\prod_{j=1}^{k}p(t_j)"></div>
+
+<p>右侧的乘积符号表示把所有片段的概率相乘。片段概率属于分词器模型，与大模型预测下一个 token 的概率不是同一份参数。</p>
+<p>同一字符串可能有多条合法切分。Unigram 通常选择路径概率最高的一条，而不是每一步都挑最长片段。</p>
+<h2 id="chapter-03-5">5. 一个例子：最长片段不一定组成最好路径</h2>
+<p>假设只有下面五个候选，概率人为指定并且总和为 1：</p>
+<table>
+<thead>
+<tr>
+<th>片段</th>
+<th>概率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ab</code></td>
+<td>0.40</td>
+</tr>
+<tr>
+<td><code>a</code></td>
+<td>0.15</td>
+</tr>
+<tr>
+<td><code>b</code></td>
+<td>0.15</td>
+</tr>
+<tr>
+<td><code>aba</code></td>
+<td>0.10</td>
+</tr>
+<tr>
+<td><code>bab</code></td>
+<td>0.20</td>
+</tr>
+</tbody>
+</table>
+<p>要切分 <code>abab</code>，如果从左往右贪心找最长片段，会得到 <code>aba | b</code>，路径概率为 <code>0.10×0.15 = 0.015</code>。</p>
+<p>但 <code>ab | ab</code> 的概率为 <code>0.40×0.40 = 0.16</code>，明显更大。</p>
+<figure class="illustration"><a href="assets/04-unigram-paths.svg" target="_blank" rel="noopener"><img alt="固定候选词表下的所有合法切分路径" src="assets/04-unigram-paths.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
+<p><strong>图里比较完整路径，而不是单个 token。</strong> <code>a | bab</code> 的概率是 0.03，也高于最长匹配路径。最优结果要综合后续位置能如何切分。</p>
+<p>工程实现通常用 <strong>动态规划</strong>：在每个字符位置保留最佳前缀结果，并向后扩展合法片段。它避免为长字符串显式枚举指数增长的全部路径。这类最大概率路径搜索常叫 Viterbi 解码。</p>
+<p>计算时通常将概率转为负对数成本，乘积变成加和，选最大概率就等价于选最小成本。具体推导不是理解词表生成的前提。</p>
+<h2 id="chapter-03-6-unigram">6. Unigram 词表如何生成：从大候选集逐步删减</h2>
+<p>与 BPE 常见的“逐步添加”不同，Unigram 通常先准备一份比目标词表更大的候选集合。</p>
+<h3 id="chapter-03-_2">准备候选片段</h3>
+<p>从语料中抽取候选子串，同时保留必要的基础字符等单位，使文本仍有切分路径。</p>
+<p>这里的“必要”取决于字符覆盖与回退设置，不是声称任意 Unicode 字符都已经在候选集内。</p>
+<h3 id="chapter-03-_3">根据可能切分估计概率</h3>
+<p>当前词表会让一个句子存在多条切分。训练不能简单假定最长匹配就是唯一真实切分，而是考虑各种路径对语料概率的贡献。</p>
+<p>一句话的概率通常要把所有合法切分路径的概率加起来：</p>
+<div class="equation"><img src="assets/equations/93879520bb33.svg" alt="P(x)=\sum_{z\in S(x)}\prod_{t\in z}p(t)"></div>
+
+<p><code>x</code> 是输入字符串；<code>S(x)</code> 是所有合法切分的集合；<code>z</code> 是其中一条路径；<code>t</code> 是路径中的某个 token。重复出现的 token 会重复贡献乘积。</p>
+<p>这里用“所有路径概率之和”估计语料解释能力，而上一节编码时用“概率最大的路径”。<strong>训练目标与最佳路径解码不是同一个运算。</strong></p>
+<p>常见训练过程通过 <strong>EM（期望最大化）</strong>交替更新：先根据当前概率，估计不同切分中各片段的使用量；再据此更新片段概率。训练使用高效算法累加路径贡献，不需要把所有路径逐条列出来。</p>
+<h3 id="chapter-03-_4">评估删除候选的代价</h3>
+<p>可以用训练语料的负对数似然作为损失：</p>
+<div class="equation"><img src="assets/equations/db678b20fbe0.svg" alt="\mathcal{L}=-\sum_x w_x\log P(x)"></div>
+
+<p><code>wₓ</code> 是该句子的出现次数或权重，<code>log</code> 是自然对数。取对数可以把概率乘积转换成加和；加上负号后，概率越低，成本越高。</p>
+<p>考察删除一个片段之后，其他切分能否较好地替代它，以及损失增加多少。代价小的片段更可能被删；必要的字符或控制符则可能受保护。</p>
+<p>具体训练器使用高效的近似评估与批量裁剪，不是每次删除一个片段都完整重训所有候选。</p>
+<h3 id="chapter-03-_5">裁剪、重估，直到达到目标规模</h3>
+<p>删掉一部分候选后，重新估计概率，再继续裁剪，直到得到目标词表。</p>
+<p>所以最终留下的不是简单的“全语料出现最多的前 N 个子串”，而是能够共同解释语料的片段集合。</p>
+<h2 id="chapter-03-7">7. 为什么同一文本有时会得到不同切分</h2>
+<p>默认编码通常选择最佳路径，是确定的。训练时也可以从可能路径中采样，让同一句话以不同子词组合出现。</p>
+<p>这种 <strong>subword regularization（子词正则化）</strong>用切分变化增加训练输入的多样性。BPE 也有通过随机跳过合并实现的 BPE-dropout，两者机制不同。</p>
+<p>如果评测需要可复现的 token 数，必须确认是否关闭了采样。不能把采样结果当成固定分词器每次必然的输出。</p>
+<p>下一章：<a href="#chapter-04">词表生成与工程实践</a>。</p></section><section class="chapter" id="chapter-04"><h1 id="chapter-04-04">04 · 词表生成：算法之外还有哪些决定</h1>
+<p>选定 BPE、WordPiece 或 Unigram，只决定了部分训练行为。语料组成、规范化、字符覆盖和词表规模同样会改变结果。</p>
+<p>一个实用问题是：怎样生成适合中文、英文和代码混合场景的词表，又怎样知道它确实合适？</p>
+<h2 id="chapter-04-1">1. 从训练目标出发选语料</h2>
+<p>分词器会把词表位置分配给训练语料中的片段。如果语料主要是英文，英文片段更容易获得较长 token；低比例语言可能更多依赖短片段。</p>
+<p>因此先决定要服务哪些语言和领域，再进行抽样、去重和配比。中文、代码、数学表达、数字、罕见人名等，可以各自准备独立验证样本。</p>
+<p>不能只把语料按文件大小拼起来。重复网页、模板和垃圾字符串可能抢占词表位置。清洗方式也要记录，否则后续难以复现词表。</p>
+<p>分词器验证集应与训练语料隔离，以检查新词、陌生脚本和实际输入形式的处理情况。</p>
+<h2 id="chapter-04-2">2. 固定预处理：它决定算法实际看到什么</h2>
+<p>先明确大小写是否保留、Unicode 如何规范化、连续空格和换行如何处理，以及是否先按空格或标点划分片段。</p>
+<p>对代码而言，大小写、缩进、换行可能有实际意义；对标识符而言，<code>Foo</code> 与 <code>foo</code> 也可能不是同一个对象。不能因为某种清洗能减少词表，就默认它适合所有任务。</p>
+<p>这些配置需要同时用于训练和编码。训练看到一种文本形式、上线看到另一种形式，会引入不必要的差异。</p>
+<h2 id="chapter-04-3">3. 先确定基础覆盖，再谈大子词</h2>
+<h3 id="chapter-04-_1">字符覆盖率</h3>
+<p><strong>字符覆盖率</strong>通常指保留的字符覆盖了训练语料中多少字符出现次数，而不是覆盖了多少种 Unicode 字符。</p>
+<p>一个罕见字符可能因目标覆盖率而被排除。降低覆盖率能节省基础词表位置，但若没有回退机制，遇到它时可能输出未知 token。</p>
+<h3 id="chapter-04-bpe">字节级 BPE</h3>
+<p>字节级 BPE 从 UTF-8 字节出发，而不是直接从 Unicode 字符出发。一个完整的 256 字节基础集合，可以表示任意有效 UTF-8 文本所需的字节。</p>
+<p>某些实现会把字节映射成可打印的 Unicode 符号，方便存储和展示。因此可见词表项不一定就是原文里的字符。</p>
+<p>字节可以继续合并成较长 token。例如 <code>中</code> 的 UTF-8 字节为 <code>E4 B8 AD</code>，但是否恰好占 3 个 token，要看这三个字节有没有形成已学到的合并。</p>
+<p>一个 token 也可能只包含一个汉字的部分 UTF-8 字节，单独显示时不是完整字符。解码要先拼接完整字节流，而不是逐个 token 独立当作 UTF-8 文本解码。</p>
+<h3 id="chapter-04-byte-fallback">Byte fallback：字符方案的兜底</h3>
+<p><strong>Byte fallback（字节回退）</strong>与“始终从字节级基础单位开始”不同。它通常在字符/子词方案无法表示某字符时，把它退回对应的字节 token。</p>
+<p>例如有些词表用 <code>&lt;0xE4&gt;</code> 这类形式展示字节项。仅加入 256 个普通字符串，还不等于实现了真正回退；训练和编码器必须支持并启用该规则。</p>
+<p>SentencePiece 的 <code>byte_fallback</code> 是配置选项，不是所有 SentencePiece 模型的默认保证。这 256 个字节项也会占用词表预算。</p>
+<p>字节覆盖可以减少未知文本问题，但不能恢复已经在规范化阶段丢掉的差异。</p>
+<h2 id="chapter-04-4-token">4. 特殊 token 从哪里来</h2>
+<p>特殊 token 不一定由统计合并学出。它们通常由配置、模型架构或任务约定保留。</p>
+<ul>
+<li><code>[UNK]</code> 或 <code>&lt;unk&gt;</code>：表示无法正常编码的单元。</li>
+<li>BOS/EOS：句首或序列起始、序列结束标记。</li>
+<li>PAD：将不同长度样本对齐时使用的填充标记。</li>
+<li>角色或任务标记：用于聊天轮次、工具消息或其他任务结构。</li>
+</ul>
+<p>这些名字和 ID 不通用；某些模型也不使用其中某项。例如 PAD 是否存在、是否与 EOS 共用，要检查具体模型。</p>
+<p>新增一个特殊字符串时，还要决定是否作为不可拆分单元、是否自动插入、解码时是否跳过。<strong>特殊 token 的行为来自配置，不是因为字符串看起来有尖括号就自动生效。</strong></p>
+<h2 id="chapter-04-5">5. 词表规模怎样影响序列长度与成本</h2>
+<p>更多词表位置可以容纳更多长片段，但并不保证所有文本都用更少 token，更不保证模型一定更好。</p>
+<p>先看一份确定的教学语料。在 BPE 训练中逐步加入合并，观察同一语料的 token 总数如何变化。</p>
+<figure class="illustration"><a href="assets/05-vocabulary-budget.svg" target="_blank" rel="noopener"><img alt="教学语料中词表增长与 token 数变化" src="assets/05-vocabulary-budget.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
+<p><strong>左图的下降来自实际运行教学 BPE，不是模型性能实验。</strong> 它反映这份训练语料受合并影响后的长度，不能直接推断陌生语料也按同样幅度下降。</p>
+<h3 id="chapter-04-_2">词表也占模型参数</h3>
+<p>设词表大小为 <code>V</code>，模型隐藏维度为 <code>D</code>，输入 embedding 大约需要：</p>
+<div class="equation"><img src="assets/equations/247cbba2f319.svg" alt="N_{\mathrm{embed}}=V\times D"></div>
+
+<p>如果 <code>V = 32,000</code>、<code>D = 4,096</code>，就是约 1.31 亿个参数。只存一份 BF16 权重时，每参数 2 字节，约为 262 MB；这不含梯度、优化器状态和其他模型层。</p>
+<p><strong>BF16</strong>是一种占 2 字节的浮点数格式。这里用十进制 MB 表示存储量，不与二进制 MiB 混用。</p>
+<p>输出预测也通常需要把隐藏向量映射到 <code>V</code> 个候选 token 的分数。如果输入 embedding 与输出权重绑定，可以共享一份权重；不绑定时通常还要额外一份类似规模的矩阵。具体架构可能有例外。</p>
+<p>图的右半部分只计算一份 embedding 的参数量，未把它当作整个模型的参数总数。</p>
+<h3 id="chapter-04-_3">较大词表并非总是合算</h3>
+<p>常见长片段可以减少序列长度，进而影响上下文利用和注意力成本；较大词表同时增大 embedding 和输出层，并把训练出现次数分散到更多 token 上。</p>
+<p>一些罕见片段即使进入词表，也可能没有足够训练信号学好对应向量。评估应同时考虑 token 效率、语言覆盖和模型成本，而不是只追求更大的数字。</p>
+<h2 id="chapter-04-6">6. 词表生成后，要交付什么</h2>
+<p>至少保存能够恢复完整编码/解码行为的模型文件与配置。</p>
+<p>BPE 的独立实现可能使用 <code>vocab.json</code> 与 <code>merges.txt</code>；WordPiece 常见文本词表；SentencePiece 常见 <code>.model</code> 与可读 <code>.vocab</code>。这些是常见形式，不是所有工具必须采用的文件名。</p>
+<p>可读 <code>.vocab</code> 通常不足以替代 SentencePiece 的完整模型文件，因为规范化、片段类型和其他配置也需要保存。</p>
+<p>如果使用 <code>tokenizer.json</code> 等整合格式，同样要核查它是否连同特殊 token 配置、聊天模板和模型需要的附加文件完整交付。</p>
+<p>ID 分配也要固定下来。它不是由“词频越大 ID 越小”这一普遍规则决定的；特殊 token 顺序和训练器实现都可能影响编号。</p>
+<h2 id="chapter-04-7">7. 换词表为什么会影响已有模型</h2>
+<p>已经训练好的模型，其 embedding 和输出权重按原 ID 排列。把一个词表字符串换成另一个，或者重新排列 ID，会改变编号对应的意义。</p>
+<p>即使两份词表大小相同，也不能直接互换。</p>
+<p>如果只是追加新 token，通常需要扩大输入/输出矩阵，并通过训练让新行得到有用表示。还要检查新 token 是否改变原文本的切分；更长片段可能优先匹配，从而影响原有输入。</p>
+<p>从头更换分词器，则通常需要权重映射、进一步训练或重新训练。它不是“改一个词表文件”就能完成的维护操作。</p>
+<h2 id="chapter-04-8">8. 怎样评测生成的词表</h2>
+<p>先按中文、英文、代码、数字和特殊文本分别测，不用一个混合平均值掩盖局部问题。</p>
+<p>推荐记录以下项目：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>它回答什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token 数与长度分布</td>
+<td>同一验证文本会占多少上下文位置</td>
+</tr>
+<tr>
+<td>未知 token 与字节回退比例</td>
+<td>哪些内容没有获得常规子词覆盖</td>
+</tr>
+<tr>
+<td>解码一致性</td>
+<td>能否还原预期保留的内容与空白</td>
+</tr>
+<tr>
+<td>编码/解码速度</td>
+<td>分词本身是否成为数据管线瓶颈</td>
+</tr>
+<tr>
+<td>下游任务结果</td>
+<td>接入或训练模型后，实际能力是否改善</td>
+</tr>
+</tbody>
+</table>
+<p>“每词多少 token”适合有明确定义的词边界时比较；中文与混合文本可以补充每字符、每 UTF-8 字节等指标。比较时固定规范化、文本集合与计数方式。</p>
+<p>困惑度也不能无条件跨分词器直接比较，因为 token 单元改变了。若要比较语言建模效率，可以采用统一的字符/字节归一化等评测设计，而不是只看每 token 的分数。</p>
+<h2 id="chapter-04-9">9. 用一句话分别记住这些名称</h2>
+<p><strong>BPE</strong>：常见训练方式是从小单元开始按相邻对频次合并，编码遵循合并优先级。</p>
+<p><strong>WordPiece</strong>：训练偏向能改善子词模型的候选；典型编码是带词内约定的最长前缀匹配。归一化合并分数属于教学近似。</p>
+<p><strong>Unigram</strong>：从较大候选集出发估计片段概率并裁剪，编码通常选择整条字符串的最佳概率路径。</p>
+<p><strong>SentencePiece</strong>：把规范化、空白处理、训练、编码和解码整合起来的工具，可选择 BPE 或 Unigram 等模型。</p>
+<p>最后阅读：<a href="#chapter-05">可复现实验与参考资料</a>。</p></section><section class="chapter" id="chapter-05"><h1 id="chapter-05-05">05 · 可复现实验与进一步阅读</h1>
+<p>文中的关键数值来自本专题的教学代码。代码帮助核对机制，不冒充生产级分词器，也不把模拟词表当作真实模型配置。</p>
+<h2 id="chapter-05-1">1. 运行例子</h2>
+<p>在资料库根目录执行：</p>
+<pre><code class="language-powershell">python notes/foundations/tokenization/src/demo.py
+</code></pre>
+<p>程序输出并检查四个例子：</p>
+<ul>
+<li>同一加权语料上的 BPE 前三轮合并。</li>
+<li>WordPiece 教学归一化分数与第一轮选择。</li>
+<li>固定词表下 <code>playing</code> 的最长匹配，以及 <code>playz</code> 的整词未知处理。</li>
+<li><code>abab</code> 的所有 Unigram 路径与动态规划最优路径。</li>
+</ul>
+<p>还比较 BPE 合并优先级与最长匹配在 <code>abc</code> 上的差别。</p>
+<p><code>demo.py</code> 不实现生产系统的完整规范化、Unicode 字节映射、特殊 token、SentencePiece EM 训练或高性能切分。WordPiece 的训练部分明确采用教学评分近似。</p>
+<h2 id="chapter-05-2">2. 重建插图和阅读版</h2>
+<pre><code class="language-powershell">python notes/foundations/tokenization/src/build.py
+</code></pre>
+<p>生成五组 PNG/SVG 插图、公式 SVG、<code>阅读版.html</code> 和 <code>src/example-results.json</code>。正文修改后应重新构建，避免 Markdown 与阅读版不一致。</p>
+<p>图 1 是职责流程示意；图 2、3、4 来自教学语料与指定概率；图 5 左图来自同一教学 BPE，右图按 <code>V×D</code> 计算参数量。均不对应真实语言模型的性能测量。</p>
+<h2 id="chapter-05-3-sentencepiece">3. 真正训练一个 SentencePiece 模型</h2>
+<p>上面的教学代码方便看清机制。真正生成可使用的模型文件，可以安装 <code>sentencepiece</code>，将真实语料准备为 UTF-8 文件，每行一条训练样本，再使用官方训练器。</p>
+<p>下面是配置起点，未在本专题的小语料上执行，不是已经调优的训练配方：</p>
+<pre><code class="language-python">from pathlib import Path
+import sentencepiece as spm
+
+Path(&quot;outputs&quot;).mkdir(exist_ok=True)
+spm.SentencePieceTrainer.train(
+    input=&quot;corpus.txt&quot;,
+    model_prefix=&quot;outputs/tokenizer&quot;,
+    model_type=&quot;unigram&quot;,       # 改为 &quot;bpe&quot; 可训练 SentencePiece BPE
+    vocab_size=32000,
+    character_coverage=0.9995,   # 按真实语料与覆盖需求调整
+    byte_fallback=True,          # 启用字节回退，需预留 256 个词表项
+)
+
+tokenizer = spm.SentencePieceProcessor(model_file=&quot;outputs/tokenizer.model&quot;)
+text = &quot;我正在学习 Tokenization。&quot;
+pieces = tokenizer.encode(text, out_type=str)
+ids = tokenizer.encode(text, out_type=int)
+print(pieces)
+print(ids)
+print(tokenizer.decode(ids))
+</code></pre>
+<p>训练会生成 <code>.model</code> 与 <code>.vocab</code>。实际切分取决于语料和配置，这里不预先编造输出。</p>
+<p>默认规范化、空白处理和特殊 ID 也需要核查。语料过小，或者基础字符、字节项和特殊 token 占满预算时，目标词表大小可能不适用，训练器可能报错；这时应根据语料与预算调整，而不是只改一个更大的数字。</p>
+<p>已有语言模型通常使用它随模型发布的分词器。这个模板适合学习或新模型的数据准备，不表示可以直接替换现成模型的原词表。</p>
+<h2 id="chapter-05-4">4. 原始论文</h2>
+<ol>
+<li>Sennrich 等，<strong>Neural Machine Translation of Rare Words with Subword Units</strong>（2016）：子词 BPE 在神经机器翻译中的应用。<a href="https://aclanthology.org/P16-1162/">论文</a></li>
+<li>Schuster 与 Nakajima，<strong>Japanese and Korean Voice Search</strong>（2012）：WordPiece 的早期资料。<a href="https://doi.org/10.1109/ICASSP.2012.6289079">DOI</a></li>
+<li>Devlin 等，<strong>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</strong>（2019）：BERT 的 WordPiece 使用方式。<a href="https://aclanthology.org/N19-1423/">论文</a></li>
+<li>Kudo，<strong>Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates</strong>（2018）：Unigram 与子词切分采样。<a href="https://aclanthology.org/P18-1007/">论文</a></li>
+<li>Kudo 与 Richardson，<strong>SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing</strong>（2018）：SentencePiece 工具及设计。<a href="https://aclanthology.org/D18-2012/">论文</a></li>
+</ol>
+<h2 id="chapter-05-5">5. 实现与教学资料</h2>
+<ul>
+<li><a href="https://github.com/google/sentencepiece">SentencePiece 官方项目</a>：模型类型、规范化、空白处理与训练接口。</li>
+<li><a href="https://github.com/google/sentencepiece/blob/master/src/sentencepiece_model.proto">SentencePiece 训练配置定义</a>：字符覆盖、词表、回退与其他选项的实现定义。</li>
+<li><a href="https://huggingface.co/learn/llm-course/en/chapter6/5">Hugging Face：BPE</a>：计数、合并与编码示例。</li>
+<li><a href="https://huggingface.co/learn/llm-course/en/chapter6/6">Hugging Face：WordPiece</a>：归一化评分的教学解释及原始训练实现未完整公开的说明。</li>
+<li><a href="https://huggingface.co/learn/llm-course/en/chapter6/7">Hugging Face：Unigram</a>：概率路径和候选裁剪的教学解释。</li>
+<li><a href="https://github.com/google-research/bert/blob/master/tokenization.py">BERT 原始 tokenization.py</a>：最长匹配、<code>##</code> 和整单元未知处理。</li>
+</ul>
+<p>本次编写读取了 SentencePiece 官方 README，以及上述 Hugging Face 的 BPE、WordPiece、Unigram 教学页面。具体工具配置随版本变化，实际实验仍需记录依赖版本与训练参数。</p>
+<h2 id="chapter-05-6">6. 为自己的词表保留一份训练记录</h2>
+<p>记录语料来源与配比、清洗方式、规范化与边界规则、算法与工具版本、目标词表大小、字符覆盖与回退设置、特殊 token 和 ID，以及独立验证结果。</p>
+<p>这些信息与生成的模型文件一起保存，才能回答“为什么这一段被切成这样”，也才能在以后复现词表。</p></section><footer>Markdown 为正文源文件，Python 生成插图与阅读版。编写日期：2026-10-14。</footer>
+</article></main></body></html>
