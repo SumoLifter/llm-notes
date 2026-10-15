@@ -24,6 +24,7 @@ CHAPTERS = [
     ("03-SentencePiece与Unigram.md", "chapter-03", "03 · SentencePiece / Unigram"),
     ("04-词表生成与工程实践.md", "chapter-04", "04 · 词表生成与实践"),
     ("05-实验与参考资料.md", "chapter-05", "05 · 实验与参考资料"),
+    ("06-面试深度与常见陷阱.md", "chapter-06", "06 · 面试深度与陷阱"),
 ]
 
 

@@ -8,6 +8,8 @@
 - [打开舒适阅读版](notes/foundations/rope-and-context/阅读版.html)：本地 HTML，调整了行距、段间距、公式和插图布局，无需联网。
 - [Tokenization 算法与词表生成机制](notes/foundations/tokenization/README.md)：BPE、WordPiece、SentencePiece/Unigram，以及词表训练、编码和模型兼容性。
 - [Tokenization 阅读版](notes/foundations/tokenization/阅读版.html)：带可复现例子与 Python 插图的本地阅读版。
+- [Attention 与 MHA/MQA/GQA](notes/architecture/attention/README.md)：缩放点积注意力、多头结构、KV cache 与三种注意力变体。
+- [Attention 阅读版](notes/architecture/attention/阅读版.html)：按模型架构组织的本地阅读版。
 
 ## 写作与阅读偏好（后续修改请遵循）
 
@@ -53,8 +55,13 @@
 大模型/
 ├── README.md                 资料入口与存放规则
 ├── notes/                    自己整理的知识笔记
-│   └── foundations/          基础原理：注意力、位置编码等
-│       └── rope-and-context/ 当前专题：正文、图和绘图源码
+│   ├── foundations/          基础机制：分词、位置编码、概率等
+│   │   ├── rope-and-context/ 旋转位置编码与上下文扩展
+│   │   └── tokenization/     Tokenization 与词表
+│   ├── architecture/         模型架构：Attention、Transformer、MoE 等
+│   │   └── attention/        Attention 与 MHA/MQA/GQA
+│   └── systems/              系统机制：并行、量化、推理运行时等
+├── infra/                    基础设施：训练集群、部署、监控、存储
 ├── papers/                   论文 PDF、补充材料与论文阅读笔记
 ├── experiments/              实验代码、配置、结果与运行记录
 ├── resources/                跨专题复用的资料、模板与数据说明
@@ -62,7 +69,7 @@
 └── archive/                  原稿、旧版本与不再维护的材料
 ```
 
-`notes` 后续按内容增加 `training`、`inference`、`evaluation`、`applications` 等目录。有实际资料时再创建，不提前堆空目录。
+`notes` 按知识层级和主题组织：基础机制放 `foundations`，模型结构放 `architecture`，系统机制放 `systems`。训练集群、部署和监控放 `infra`，不要把基础设施说明塞进模型原理专题。只有有实际资料时再增加更细的专题目录。
 
 ## 新资料的组织规则
 

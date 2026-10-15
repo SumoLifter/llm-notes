@@ -1,0 +1,39 @@
+
+:root{--ink:#263440;--muted:#72808b;--accent:#24649a;--paper:#fff;--bg:#f5f4ef}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:36px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Microsoft YaHei','Noto Sans CJK SC',sans-serif}
+nav{position:fixed;top:0;left:0;width:260px;height:100vh;padding:48px 28px;overflow:auto;border-right:1px solid #e1e4e5}
+nav .brand{font-size:12px;letter-spacing:.15em;color:var(--muted);margin-bottom:32px}
+nav a{display:block;font-size:14px;line-height:1.8;padding:10px 0;color:#4c6170;text-decoration:none}
+nav a:hover{color:var(--accent)}nav hr{border:0;border-top:1px solid #dfe4e7;margin:28px 0}
+nav p{font-size:12px;line-height:1.9;color:var(--muted)}
+main{margin:0 0 0 260px;padding:64px 56px 120px}article{max-width:810px;margin:auto}
+header{padding:24px 0 64px}.eyebrow{font-size:13px;color:var(--accent);letter-spacing:.12em}
+header h1{font-size:36px;line-height:1.55;margin:20px 0 24px;letter-spacing:.01em}
+header p{color:#617381;font-size:19px;line-height:1.9;max-width:660px}
+.chapter{background:var(--paper);padding:52px 52px 60px;margin:0 0 72px;border:1px solid #e6e9eb;border-radius:8px}
+.chapter h1{font-size:28px;line-height:1.65;margin:0 0 32px;font-weight:650}
+.chapter h2{font-size:23px;line-height:1.65;margin:64px 0 24px;padding-top:12px;border-top:1px solid #e7ecef;font-weight:650}
+.chapter h3{font-size:20px;line-height:1.7;margin:36px 0 16px;font-weight:650}
+p,li{font-size:19px;line-height:1.95;overflow-wrap:break-word}
+p{margin:0 0 26px}ul,ol{padding-left:1.5em;margin:24px 0 32px}li{margin:0 0 14px}
+strong{font-weight:650;color:#233e50}a{color:var(--accent);text-underline-offset:4px}
+code{font-family:'Microsoft YaHei',sans-serif;font-size:.91em;background:#f0f4f7;border-radius:4px;padding:2px 5px}
+pre{overflow-x:auto;background:#f7f9fa;padding:24px 18px;margin:28px 0;border-radius:6px;line-height:1.9}pre code{font-family:Consolas,'Courier New',monospace;background:transparent;padding:0;font-size:15px}
+.equation{margin:32px 0 36px;padding:28px 20px;text-align:center;background:#f7f9fa;border-radius:6px;overflow-x:auto}
+.equation img{max-width:100%;height:auto;vertical-align:middle}
+p:has(>img){margin:38px -24px 28px;padding:12px 0;background:white}
+p>img{display:block;width:100%;height:auto}
+.illustration{margin:38px -24px 28px;padding:12px 0;background:white}
+.illustration img{display:block;width:100%;height:auto}
+.illustration figcaption{text-align:center;font-size:12px;line-height:1.8;color:var(--muted);margin-top:14px}
+table{border-collapse:collapse;width:100%;margin:32px 0;font-size:15px;line-height:1.8}
+th,td{text-align:left;padding:14px 12px;border-bottom:1px solid #e1e7eb;vertical-align:top}
+th{background:#f1f5f7;font-weight:650}blockquote{border-left:3px solid #b6cbd8;margin:28px 0;padding-left:20px}
+footer{font-size:13px;line-height:1.9;color:var(--muted)}
+@media(min-width:1450px){main{padding-right:130px}}
+@media(max-width:1050px){nav{width:210px;padding:32px 20px}main{margin-left:210px;padding:40px 24px}.chapter{padding:38px 32px}p,li{font-size:18px}}
+@media(max-width:760px){nav{position:static;width:auto;height:auto;padding:24px;border:0;border-bottom:1px solid #ddd}nav .brand{margin-bottom:12px}nav a{display:inline-block;margin-right:14px;font-size:13px}nav hr,nav p{display:none}main{margin:0;padding:28px 16px 60px}header{padding:10px 8px 32px}header h1{font-size:28px}.chapter{padding:30px 22px;margin-bottom:36px}.chapter h1{font-size:24px}.chapter h2{font-size:21px;margin-top:48px}p,li{font-size:17px;line-height:1.9}p:has(>img){margin-left:-12px;margin-right:-12px}table{font-size:13px}th,td{padding:10px 6px}.equation{padding:22px 10px}}
+@media print{nav{display:none}main{margin:0;padding:0}body{background:white}.chapter{border:0;padding:24px 0;break-before:page}h1,h2,h3{break-after:avoid}.equation,p:has(>img){break-inside:avoid}header{padding-bottom:30px}}
+@media(max-width:760px){.illustration{margin-left:-12px;margin-right:-12px}pre code{white-space:pre-wrap;overflow-wrap:anywhere}}
+@media print{.illustration{break-inside:avoid}.illustration figcaption{display:none}}
