@@ -25,6 +25,7 @@ CHAPTERS = [
     ("04-词表生成与工程实践.md", "chapter-04", "04 · 词表生成与实践"),
     ("05-实验与参考资料.md", "chapter-05", "05 · 实验与参考资料"),
     ("06-面试深度与常见陷阱.md", "chapter-06", "06 · 面试深度与陷阱"),
+    ("07-Token向量化的具体计算.md", "chapter-07", "07 · Token 向量化计算"),
 ]
 
 
@@ -169,10 +170,25 @@ def formula(match):
     digest = hashlib.sha256(expression.encode()).hexdigest()[:12]
     folder = ASSETS / "equations"
     folder.mkdir(exist_ok=True)
-    with plt.rc_context({"savefig.transparent": True}):
-        mathtext.math_to_image(f"${expression}$", folder / f"{digest}.svg",
-                               prop=font_manager.FontProperties(size=18),
-                               format="svg", color="#25313d")
+    output = folder / f"{digest}.svg"
+    # Matplotlib mathtext does not implement LaTeX's bmatrix environment.
+    # Render these small teaching matrices as an SVG text block instead of
+    # making the whole reader fail on an otherwise valid Markdown formula.
+    if r"\begin{bmatrix}" in expression:
+        matrix = expression.replace(r"\begin{bmatrix}", "[").replace(r"\end{bmatrix}", "]")
+        matrix = matrix.replace(r"\\", "\n").replace("&", "  ")
+        fig = plt.figure(figsize=(4.8, 0.85), dpi=160)
+        fig.patch.set_alpha(0)
+        fig.text(0.03, 0.5, matrix, va="center", ha="left",
+                 fontsize=15, family="DejaVu Sans Mono", color="#25313d")
+        fig.savefig(output, format="svg", transparent=True,
+                    bbox_inches="tight", pad_inches=0.08)
+        plt.close(fig)
+    else:
+        with plt.rc_context({"savefig.transparent": True}):
+            mathtext.math_to_image(f"${expression}$", output,
+                                   prop=font_manager.FontProperties(size=18),
+                                   format="svg", color="#25313d")
     return (f'\n\n<div class="equation"><img src="assets/equations/{digest}.svg" '
             f'alt="{html.escape(expression, quote=True)}"></div>\n\n')
 

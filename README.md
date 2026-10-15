@@ -10,6 +10,8 @@
 - [Tokenization 阅读版](notes/foundations/tokenization/阅读版.html)：带可复现例子与 Python 插图的本地阅读版。
 - [Attention 与 MHA/MQA/GQA](notes/architecture/attention/README.md)：缩放点积注意力、多头结构、KV cache 与三种注意力变体。
 - [Attention 阅读版](notes/architecture/attention/阅读版.html)：按模型架构组织的本地阅读版。
+- [MoE 架构](notes/architecture/moe/README.md)：Router、Top-k、负载均衡损失、细粒度专家与共享专家。
+- [MoE 阅读版](notes/architecture/moe/阅读版.html)：按模型架构组织的本地阅读版。
 
 ## 写作与阅读偏好（后续修改请遵循）
 
@@ -26,6 +28,12 @@
 非基础概念在第一次使用前或使用时解释：它是什么、为什么在这里需要它，以及与前面内容有什么关系。缩写首次出现时给出名称和简明含义，不要求读者自己补齐前置知识。
 
 公式附近解释符号、单位、取值与适用条件。章节按照依赖关系组织，避免后半篇突然出现前面没有介绍的概念；不影响主线的复杂推导可以移入数学补充。
+
+### 公式必须解释“为什么这样算”
+
+公式不能只作为结论摆出来。每个关键公式都要解释：输入是什么、输出是什么、每一步的数学操作对应解决什么问题、为什么选择这个操作，以及改成其他形式会出现什么后果。
+
+推荐顺序是“先用小例子建立直觉 → 逐步计算 → 写成矩阵或一般公式 → 对照张量形状和复杂度 → 说明假设、反例与工程边界”。例如讲 Attention 时，必须分别说明为什么是 `QKᵀ`、为什么除以 `√dₖ`、为什么 Softmax 后乘 `V`，不能只写出公式。
 
 ### 排版要有呼吸感
 
@@ -59,7 +67,8 @@
 │   │   ├── rope-and-context/ 旋转位置编码与上下文扩展
 │   │   └── tokenization/     Tokenization 与词表
 │   ├── architecture/         模型架构：Attention、Transformer、MoE 等
-│   │   └── attention/        Attention 与 MHA/MQA/GQA
+│   │   ├── attention/        Attention 与 MHA/MQA/GQA
+│   │   └── moe/              MoE 与专家路由
 │   └── systems/              系统机制：并行、量化、推理运行时等
 ├── infra/                    基础设施：训练集群、部署、监控、存储
 ├── papers/                   论文 PDF、补充材料与论文阅读笔记

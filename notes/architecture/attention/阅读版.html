@@ -45,16 +45,55 @@ footer{font-size:13px;line-height:1.9;color:var(--muted)}
 <div class="equation"><img src="assets/equations/5590aaf0d584.svg" alt="Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V"></div>
 
 <p>Q（query）是“我想找什么”，K（key）是“我有什么特征可供匹配”，V（value）是“匹配后真正取走的内容”。这个比喻帮助记忆，但 Q/K/V 的每一维没有固定的人类语义。</p>
-<h2 id="chapter-01-2">2. 从一个分数到一整行权重</h2>
+<h2 id="chapter-01-2-qkt-query-key">2. 为什么是 <code>QKᵀ</code>：先算一个 query 对所有 key 的分数</h2>
+<p>先不要看矩阵。假设只有一个 query <code>q_i</code> 和三个 key：<code>k_1、k_2、k_3</code>。当前位置 <code>i</code> 需要回答一个问题：<strong>我应该从这三个位置分别取多少信息？</strong></p>
+<p>最直接的相似度是点积：</p>
+<div class="equation"><img src="assets/equations/56078b16da0c.svg" alt="s_{i1}=q_i k_1^T,\qquad s_{i2}=q_i k_2^T,\qquad s_{i3}=q_i k_3^T"></div>
+
+<p>如果 Q/K 都写成行向量，<code>qᵢ</code> 的形状是 <code>[1,d_k]</code>，<code>kⱼ</code> 的形状也是 <code>[1,d_k]</code>。要让它们相乘并把对应维度相乘后求和，就要把第二个向量转成 <code>[d_k,1]</code>，也就是 <code>kⱼ^T</code>。</p>
+<p>现在把所有 query 叠成矩阵 <code>Q∈R^{L_q×d_k}</code>，把所有 key 叠成矩阵 <code>K∈R^{L_k×d_k}</code>。矩阵乘法 <code>QK^T</code> 的形状是：</p>
+<div class="equation"><img src="assets/equations/434828cc5358.svg" alt="[L_q,d_k]\,[d_k,L_k]=[L_q,L_k]"></div>
+
+<p>结果的第 <code>i,j</code> 个元素正好是 <code>qᵢ·kⱼ</code>。因此，转置不是为了“让公式看起来对称”，而是为了让每个 query 与所有 key 的内积一次性排列成分数矩阵。</p>
+<p>如果写成 <code>QK</code>，内维度通常对不上；即使人为改了布局，也不会得到“query 位置 × key 位置”的矩阵。</p>
+<h2 id="chapter-01-3-d_k">3. 为什么除以 <code>√d_k</code>：控制点积分布的尺度</h2>
+<p>假设 Q 和 K 的每个分量都近似独立、均值为 0、方差为 1。一个点积是：</p>
+<div class="equation"><img src="assets/equations/e9ec6d037efe.svg" alt="q\cdot k=\sum_{r=1}^{d_k}q_rk_r"></div>
+
+<p>每个乘积的方差近似为 1，<code>d_k</code> 项相加后，点积方差约为 <code>d_k</code>，标准差约为 <code>√d_k</code>。head 维度越大，未缩放的分数就越容易出现很大的正负值。</p>
+<p>Softmax 对一行分数做指数：</p>
+<div class="equation"><img src="assets/equations/a0a6df092721.svg" alt="\operatorname{softmax}(s_j)=\frac{e^{s_j}}{\sum_t e^{s_t}}"></div>
+
+<p>当分数差很大时，Softmax 会接近 <code>[1,0,0,…]</code>。这不只是“注意力更尖锐”，还会让大多数位置的梯度接近 0，训练早期更难调整。除以 <code>√d_k</code> 把点积的典型标准差拉回大约 1 的量级。</p>
+<p>这是一种基于初始化统计的尺度控制，不是严格保证每个 batch 的方差都正好为 1。LayerNorm、参数初始化和训练状态都会改变真实分布，但这个缩放仍然是标准设计。</p>
+<h2 id="chapter-01-4-softmax-v">4. 为什么 Softmax 后再乘 <code>V</code>：把分数变成“取信息的比例”</h2>
+<p>点积只回答“匹配程度”，不能直接作为输出内容。假设一个 query 对三个位置的分数是 <code>[2,1,0]</code>，Softmax 后得到大约 <code>[0.665,0.245,0.090]</code>。这三个数有两个作用：非负，而且加起来为 1。</p>
+<p>于是可以用它们对三个 value 做加权平均：</p>
+<div class="equation"><img src="assets/equations/2a75d6b93d55.svg" alt="o_i=0.665v_1+0.245v_2+0.090v_3"></div>
+
+<p>这一步把“去哪里取信息”转换成“具体取回什么内容”。如果直接用原始分数乘 V，分数可能为负、总和也不固定，输出尺度会随 key 数量和点积大小漂移；Softmax 提供了稳定的归一化权重。</p>
+<p>把所有 query 的权重排成 <code>A</code>，所有 value 排成 <code>V</code>，批量计算就是 <code>AV</code>。矩阵乘法的第 <code>i</code> 行正好是第 <code>i</code> 个 query 对所有 value 的加权和。</p>
+<p>这里的“概率”是注意力权重的数学形状，不表示模型真的在做一个经过校准的概率推断。Softmax 是可替换的设计部件，但标准 Transformer 使用它来获得可微、归一化的权重。</p>
+<h2 id="chapter-01-5">5. 把三步串起来</h2>
 <p>第 <code>i</code> 个位置与第 <code>j</code> 个位置的原始匹配分数是点积 <code>qᵢ·kⱼ</code>。除以 <code>√d_k</code> 后再做 Softmax：</p>
 <div class="equation"><img src="assets/equations/3a3d8c5a447f.svg" alt="S=\frac{QK^T}{\sqrt{d_k}},\qquad A=\operatorname{softmax}(S)V"></div>
 
-<p><code>d_k</code> 是 K 的最后一维。缩放的原因是：如果 Q/K 各维方差近似稳定，维度增大时点积方差会增大，Softmax 更容易饱和；除以平方根把分数尺度拉回可训练范围。</p>
+<p>完整顺序是：</p>
+<ol>
+<li><code>QKᵀ</code>：为每个 query 位置和每个 key 位置打一个匹配分数。</li>
+<li><code>/√dₖ</code>：把分数的典型尺度控制住，避免 Softmax 过早饱和。</li>
+<li>加 mask：把不允许读取的位置从候选集合中排除。</li>
+<li><code>Softmax</code>：把一行分数变成归一化的取信息权重。</li>
+<li><code>AV</code>：用这些权重对 V 做加权汇总，得到每个 query 位置的新表示。</li>
+</ol>
+<p>因此，公式右侧的 <code>A=softmax(S)V</code> 中，<code>A</code> 容易造成歧义：严格说 <code>softmax(S)</code> 是注意力权重矩阵，乘 V 后才是输出。下面把权重记为 <code>P</code>，输出记为 <code>O</code>：</p>
+<div class="equation"><img src="assets/equations/e03e3a4498b8.svg" alt="P=\operatorname{softmax}(S),\qquad O=PV"></div>
+
 <p>Softmax 在每一行上计算：</p>
 <div class="equation"><img src="assets/equations/a0a6df092721.svg" alt="\operatorname{softmax}(s_j)=\frac{e^{s_j}}{\sum_t e^{s_t}}"></div>
 
 <p>它产生非负、和为 1 的权重。输出位置 <code>i</code> 是所有 V 的加权平均，不是只复制一个位置。</p>
-<h2 id="chapter-01-3">3. 矩阵形状一定要能对上</h2>
+<h2 id="chapter-01-6">6. 矩阵形状一定要能对上</h2>
 <p>若 <code>X</code> 是 <code>[B,L,d_model]</code>，单头投影后的 Q/K/V 是 <code>[B,L,d_k]</code>。于是：</p>
 <ul>
 <li><code>QKᵀ</code> 是 <code>[B,L,L]</code>：每个 query 位置对所有 key 位置的分数；</li>
@@ -63,7 +102,7 @@ footer{font-size:13px;line-height:1.9;color:var(--muted)}
 </ul>
 <figure class="illustration"><a href="assets/01-attention-flow.svg" target="_blank"><img alt="Attention 的形状与数据流" src="assets/01-attention-flow.png" /></a><figcaption>点击插图查看可缩放的 SVG 大图</figcaption></figure>
 <p>图中最容易混淆的是中间的 <code>L×L</code>：它不是 token embedding，也不是最终输出，而是“每个位置应该从哪些位置取多少信息”的权重矩阵。</p>
-<h2 id="chapter-01-4-mask-softmax">4. mask 在 Softmax 前起作用</h2>
+<h2 id="chapter-01-7-mask-softmax">7. mask 在 Softmax 前起作用</h2>
 <h3 id="chapter-01-mask">因果 mask</h3>
 <p>decoder-only 语言模型预测下一个 token 时，位置 <code>i</code> 不能读取未来的 <code>j&gt;i</code>。实现上把这些分数改成负无穷附近的值：</p>
 <div class="equation"><img src="assets/equations/65374b7dfe3f.svg" alt="S&#x27;_{ij}=\begin{cases}S_{ij},&amp;j\le i\\-\infty,&amp;j&gt;i\end{cases}"></div>
@@ -72,11 +111,11 @@ footer{font-size:13px;line-height:1.9;color:var(--muted)}
 <h3 id="chapter-01-padding-mask">Padding mask</h3>
 <p>batch 内样本长度不同时，padding 只是对齐用的占位符。它们不应参与有效注意力。padding mask 与 causal mask 的职责不同，工程中常将二者合并。</p>
 <p>不要把 mask 乘在最终输出上；那会让无效位置影响 Softmax 分母。正确位置通常是分数计算后、Softmax 之前。</p>
-<h2 id="chapter-01-5-self-attention-cross-attention">5. Self-attention 与 cross-attention</h2>
+<h2 id="chapter-01-8-self-attention-cross-attention">8. Self-attention 与 cross-attention</h2>
 <p><strong>Self-attention</strong> 的 Q、K、V 都来自同一序列，Q 和 K 的长度相同。</p>
 <p><strong>Cross-attention</strong> 的 Q 来自一个序列，K/V 来自另一个序列。例如 encoder-decoder 模型中，decoder 用自己的状态查询 encoder 输出。此时 query 长度与 key/value 长度可以不同。</p>
 <p>MHA、MQA、GQA 主要讨论 self-attention 中 Q/K/V 的头如何组织；不要用 cross-attention 的来源差异替代这些概念。</p>
-<h2 id="chapter-01-6">6. 复杂度与瓶颈</h2>
+<h2 id="chapter-01-9">9. 复杂度与瓶颈</h2>
 <p>对稠密全注意力，显式形成 <code>L×L</code> 分数矩阵时，时间和中间存储大致含有 <code>O(L²d_h)</code> 与 <code>O(L²)</code> 项。Q/K/V 投影和输出投影大致是 <code>O(Ld_model²)</code>，具体主导项取决于长度与模型宽度。</p>
 <p>FlashAttention 可以分块计算，减少读写完整 <code>L×L</code> 矩阵的显存压力，但没有把稠密注意力的数学依赖变成线性。它是 IO-aware 的精确注意力内核，不等于稀疏注意力。</p>
 <p>下一章：<a href="#chapter-02">多头注意力</a>。</p></section><section class="chapter" id="chapter-02"><h1 id="chapter-02-02">02 · 多头注意力：为什么要把一个注意力拆成多个头</h1>
